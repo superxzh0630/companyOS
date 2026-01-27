@@ -1,0 +1,280 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理员监控 / Admin Monitor - CompanyOS</title>
+    <link rel="stylesheet" href="{% static 'css/base.css' %}">
+    <link rel="stylesheet" href="{% static 'css/components.css' %}">
+    <style>
+        .admin-header {
+            background: linear-gradient(135deg, #BA0C2F, #d41442);
+            color: white;
+            padding: 2rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+        }
+        .admin-header h1 {
+            margin: 0;
+            color: white;
+        }
+        .overview-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .overview-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .overview-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+        }
+        .overview-label {
+            color: #666;
+            margin-top: 0.5rem;
+        }
+        .hub-section {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .hub-bar {
+            height: 40px;
+            background: #e9ecef;
+            border-radius: 20px;
+            overflow: hidden;
+            margin: 1rem 0;
+        }
+        .hub-fill {
+            height: 100%;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            transition: width 0.5s ease;
+        }
+        .dept-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .dept-table th {
+            background: #003071;
+            color: white;
+            padding: 1rem;
+            text-align: left;
+        }
+        .dept-table td {
+            padding: 1rem;
+            border-bottom: 1px solid #eee;
+        }
+        .dept-table tr:hover {
+            background: #f8f9fa;
+        }
+        .mini-bar {
+            width: 100%;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .mini-fill {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.5s ease;
+        }
+        .mini-fill.green { background: #28a745; }
+        .mini-fill.yellow { background: #ffc107; }
+        .mini-fill.red { background: #BA0C2F; }
+        .percentage {
+            font-weight: bold;
+            min-width: 60px;
+            text-align: right;
+        }
+        .percentage.low { color: #28a745; }
+        .percentage.medium { color: #ffc107; }
+        .percentage.high { color: #BA0C2F; }
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.875rem;
+        }
+        .badge.receiver { background: #003071; color: white; }
+        .badge.sender { background: #BA0C2F; color: white; }
+        .badge.task { background: #28a745; color: white; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Admin Header -->
+        <div class="admin-header">
+            <h1>🖥️ 管理员监控台 / Admin Monitor</h1>
+            <p style="margin: 0.5rem 0 0 0; opacity: 0.9;">系统容量和状态概览 / System capacity and status overview</p>
+            <nav style="margin-top: 1rem;">
+                <a href="{% url 'index' %}" style="color: white;">← 返回首页 / Home</a> |
+                <a href="{% url 'dashboard:global_hub' %}" style="color: white;">大枢纽 / Global Hub</a> |
+                <a href="/admin/" style="color: white;">Django Admin</a>
+            </nav>
+        </div>
+
+        <!-- Overview Stats -->
+        <div class="overview-grid">
+            <div class="overview-card">
+                <div class="overview-value" style="color: #003071;">{{ total_queries }}</div>
+                <div class="overview-label">总任务数 / Total Queries</div>
+            </div>
+            <div class="overview-card">
+                <div class="overview-value" style="color: #ffc107;">{{ pending_queries }}</div>
+                <div class="overview-label">待处理 / Pending</div>
+            </div>
+            <div class="overview-card">
+                <div class="overview-value" style="color: #28a745;">{{ completed_queries }}</div>
+                <div class="overview-label">已完成 / Completed</div>
+            </div>
+            <div class="overview-card">
+                <div class="overview-value" style="color: #BA0C2F;">{{ dept_stats|length }}</div>
+                <div class="overview-label">部门数 / Departments</div>
+            </div>
+        </div>
+
+        <!-- Hub Capacity -->
+        <div class="hub-section">
+            <h2 style="margin-top: 0;">🌐 大枢纽容量 / Big Hub Capacity</h2>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                <span>当前 / Current: <strong>{{ hub_count }}</strong></span>
+                <span>容量 / Capacity: <strong>{{ hub_capacity }}</strong></span>
+            </div>
+            <div class="hub-bar">
+                {% if hub_percentage < 50 %}
+                    <div class="hub-fill" style="width: {{ hub_percentage }}%; background: #28a745;">
+                        {{ hub_percentage|floatformat:1 }}%
+                    </div>
+                {% elif hub_percentage < 80 %}
+                    <div class="hub-fill" style="width: {{ hub_percentage }}%; background: #ffc107; color: #000;">
+                        {{ hub_percentage|floatformat:1 }}%
+                    </div>
+                {% else %}
+                    <div class="hub-fill" style="width: {{ hub_percentage }}%; background: #BA0C2F;">
+                        {{ hub_percentage|floatformat:1 }}%
+                    </div>
+                {% endif %}
+            </div>
+            {% if hub_percentage >= 90 %}
+                <div style="padding: 0.75rem; background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 4px; color: #721c24;">
+                    🚨 <strong>警告:</strong> 大枢纽已接近满载！请尽快分配任务到各部门。/ Hub is near capacity! Please distribute tasks soon.
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Department Table -->
+        <h2>📊 部门容量状态 / Department Capacity Status</h2>
+        <table class="dept-table">
+            <thead>
+                <tr>
+                    <th>部门 / Department</th>
+                    <th>接收箱 / Receiver</th>
+                    <th>发送箱 / Sender</th>
+                    <th>处理中 / In Progress</th>
+                    <th>接收箱容量 / Receiver Capacity</th>
+                    <th>使用率 / Usage</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for stat in dept_stats %}
+                    <tr>
+                        <td>
+                            <strong>{{ stat.department.name }}</strong><br>
+                            <small style="color: #666;">{{ stat.department.code }}</small>
+                        </td>
+                        <td>
+                            <span class="badge receiver">📥 {{ stat.receiver_count }}</span>
+                        </td>
+                        <td>
+                            <span class="badge sender">📤 {{ stat.sender_count }}</span>
+                        </td>
+                        <td>
+                            <span class="badge task">⚙️ {{ stat.task_count }}</span>
+                        </td>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 1rem;">
+                                <div class="mini-bar" style="flex: 1;">
+                                    {% if stat.receiver_percentage < 50 %}
+                                        <div class="mini-fill green" style="width: {{ stat.receiver_percentage|floatformat:1 }}%"></div>
+                                    {% elif stat.receiver_percentage < 80 %}
+                                        <div class="mini-fill yellow" style="width: {{ stat.receiver_percentage|floatformat:1 }}%"></div>
+                                    {% else %}
+                                        <div class="mini-fill red" style="width: {{ stat.receiver_percentage|floatformat:1 }}%"></div>
+                                    {% endif %}
+                                </div>
+                                <span>{{ stat.receiver_count }}/{{ stat.receiver_capacity }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            {% if stat.receiver_percentage < 50 %}
+                                <span class="percentage low">{{ stat.receiver_percentage|floatformat:1 }}%</span>
+                            {% elif stat.receiver_percentage < 80 %}
+                                <span class="percentage medium">{{ stat.receiver_percentage|floatformat:1 }}%</span>
+                            {% else %}
+                                <span class="percentage high">{{ stat.receiver_percentage|floatformat:1 }}%</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="6" style="text-align: center; padding: 2rem; color: #666;">
+                            暂无部门数据 / No departments found
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- System Config -->
+        <div style="margin-top: 2rem; padding: 1.5rem; background: #f8f9fa; border-radius: 8px;">
+            <h3 style="margin-top: 0;">⚙️ 系统配置 / System Configuration</h3>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+                <div>
+                    <strong>枢纽容量限制 / Hub Capacity Limit:</strong>
+                    <span style="float: right;">{{ config.hub_capacity_limit }}</span>
+                </div>
+                <div>
+                    <strong>部门接收箱限制 / Dept Receiver Limit:</strong>
+                    <span style="float: right;">{{ config.dept_receiving_box_limit }}</span>
+                </div>
+            </div>
+            <div style="margin-top: 1rem;">
+                <a href="/admin/workflows/systemconfig/" style="color: #003071;">→ 修改配置 / Edit Configuration</a>
+            </div>
+        </div>
+
+        <!-- API Endpoint Info -->
+        <div style="margin-top: 1rem; padding: 1rem; background: #f8f9fa; border-radius: 4px;">
+            <strong>API Endpoint:</strong> 
+            <code>GET {% url 'dashboard:admin_monitor_api' %}</code>
+            <small style="color: #666; margin-left: 1rem;">Returns JSON with hub, departments, totals</small>
+        </div>
+    </div>
+
+    <script>
+        // Auto-refresh every 30 seconds
+        setTimeout(function() {
+            location.reload();
+        }, 30000);
+    </script>
+</body>
+</html>

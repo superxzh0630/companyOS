@@ -1,0 +1,164 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>任务详情 / Task Detail - {{ ticket.t_tag }}</title>
+    <link rel="stylesheet" href="{% static 'css/base.css' %}">
+    <link rel="stylesheet" href="{% static 'css/components.css' %}">
+    <link rel="stylesheet" href="{% static 'css/forms.css' %}">
+</head>
+<body>
+    <div class="container">
+        <header style="margin-bottom: 2rem;">
+            <h1>任务详情 / Task Detail</h1>
+            <nav>
+                <a href="{% url 'workspace:my_tasks' %}">← 返回任务列表 / Back to My Tasks</a>
+            </nav>
+        </header>
+
+        {% if messages %}
+            <div class="messages">
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <div style="border: 2px solid #003071; border-radius: 8px; padding: 2rem; background-color: #f8f9fa;">
+            <!-- Task Header -->
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 2px solid #ddd;">
+                <div>
+                    <h2 style="margin: 0 0 0.5rem 0;">
+                        <code style="color: #BA0C2F; font-size: 1.25rem;">{{ ticket.t_tag }}</code>
+                    </h2>
+                    <h3 style="margin: 0 0 1rem 0;">{{ ticket.title }}</h3>
+                    <p style="margin: 0; color: #666;">
+                        <strong>来源部门 / Source:</strong> {{ ticket.source_dept.name }} → 
+                        <strong>目标部门 / Target:</strong> {{ ticket.target_dept.name }} ({{ ticket.target_dept.code }})
+                    </p>
+                </div>
+                <div style="text-align: right;">
+                    <span style="display: block; background-color: #003071; color: white; padding: 0.5rem 1rem; border-radius: 4px; margin-bottom: 0.5rem;">
+                        {{ ticket.get_status_display }}
+                    </span>
+                    <span style="display: block; background-color: #A7B1B7; color: white; padding: 0.5rem 1rem; border-radius: 4px;">
+                        {{ ticket.get_location_display }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Task Details -->
+            <div style="margin-bottom: 2rem;">
+                <h4 style="margin-bottom: 1rem;">任务内容 / Task Content</h4>
+                <div style="background-color: white; padding: 1.5rem; border-radius: 4px; border: 1px solid #ddd;">
+                    <p style="margin: 0; white-space: pre-wrap;">{{ ticket.content }}</p>
+                </div>
+            </div>
+
+            <!-- Metadata -->
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 2rem;">
+                <div style="background-color: white; padding: 1rem; border-radius: 4px;">
+                    <strong>创建时间 / Created:</strong><br>
+                    {{ ticket.created_at|date:"Y-m-d H:i:s" }}
+                </div>
+                {% if ticket.grabbed_at %}
+                <div style="background-color: white; padding: 1rem; border-radius: 4px;">
+                    <strong>领取时间 / Picked Up:</strong><br>
+                    {{ ticket.grabbed_at|date:"Y-m-d H:i:s" }}
+                </div>
+                {% endif %}
+                {% if ticket.current_owner %}
+                <div style="background-color: white; padding: 1rem; border-radius: 4px;">
+                    <strong>当前负责人 / Current Owner:</strong><br>
+                    {{ ticket.current_owner.username }}
+                </div>
+                {% endif %}
+                {% if ticket.completed_at %}
+                <div style="background-color: white; padding: 1rem; border-radius: 4px;">
+                    <strong>完成时间 / Completed:</strong><br>
+                    {{ ticket.completed_at|date:"Y-m-d H:i:s" }}
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Attachments Section -->
+            <div style="margin-bottom: 2rem;">
+                <h4 style="margin-bottom: 1rem;">附件 / Attachments</h4>
+                
+                {% if attachments %}
+                    <div style="background-color: white; padding: 1rem; border-radius: 4px; margin-bottom: 1rem;">
+                        <table style="width: 100%;">
+                            <thead>
+                                <tr style="border-bottom: 2px solid #ddd;">
+                                    <th style="padding: 0.5rem; text-align: left;">序号 / Seq</th>
+                                    <th style="padding: 0.5rem; text-align: left;">文件名 / Filename</th>
+                                    <th style="padding: 0.5rem; text-align: left;">上传人 / Uploaded By</th>
+                                    <th style="padding: 0.5rem; text-align: left;">上传时间 / Uploaded At</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for attachment in attachments %}
+                                    <tr style="border-bottom: 1px solid #eee;">
+                                        <td style="padding: 0.5rem;">
+                                            <strong style="color: #BA0C2F;">{{ attachment.sequence_letter }}</strong>
+                                        </td>
+                                        <td style="padding: 0.5rem;">
+                                            <code>{{ ticket.t_tag }}-{{ attachment.sequence_letter }}{{ attachment.original_filename|slice:"-4:" }}</code>
+                                            <br><small style="color: #666;">({{ attachment.original_filename }})</small>
+                                        </td>
+                                        <td style="padding: 0.5rem;">{{ attachment.uploaded_by.username }}</td>
+                                        <td style="padding: 0.5rem;">{{ attachment.uploaded_at|date:"Y-m-d H:i" }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p style="padding: 1rem; background-color: white; border-radius: 4px; text-align: center; color: #666;">
+                        暂无附件 / No attachments yet
+                    </p>
+                {% endif %}
+
+                <!-- Upload Form (only if task is assigned to current user) -->
+                {% if ticket.current_owner == user and ticket.status == 'ASSIGNED' %}
+                    <div style="background-color: white; padding: 1.5rem; border-radius: 4px; border: 2px dashed #003071;">
+                        <h5 style="margin-top: 0;">上传附件 / Upload Attachment</h5>
+                        <form method="post" enctype="multipart/form-data">
+                            {% csrf_token %}
+                            <div style="margin-bottom: 1rem;">
+                                {{ attachment_form.file }}
+                            </div>
+                            <button type="submit" name="upload_file" 
+                                    style="padding: 0.5rem 1.5rem; background-color: #003071; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                上传文件 / Upload File
+                            </button>
+                            <small style="display: block; margin-top: 0.5rem; color: #666;">
+                                文件将自动重命名为 {{ ticket.t_tag }}-[A/B/C...].ext 格式 / 
+                                File will be renamed to {{ ticket.t_tag }}-[A/B/C...].ext format
+                            </small>
+                        </form>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Actions -->
+            {% if ticket.current_owner == user and ticket.status == 'ASSIGNED' %}
+                <div style="display: flex; gap: 1rem; padding-top: 1rem; border-top: 2px solid #ddd;">
+                    <a href="{% url 'workspace:complete_task' ticket.id %}" 
+                       style="padding: 0.75rem 2rem; background-color: #28a745; color: white; text-decoration: none; border-radius: 4px; font-weight: bold;">
+                        完成任务 / Complete Task
+                    </a>
+                    <a href="{% url 'workspace:my_tasks' %}" 
+                       style="padding: 0.75rem 2rem; background-color: #6c757d; color: white; text-decoration: none; border-radius: 4px;">
+                        返回 / Back
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

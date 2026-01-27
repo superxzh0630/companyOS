@@ -1,0 +1,74 @@
+/* ===================================
+   Form Styles
+   =================================== */
+
+.form-group {
+    margin-bottom: var(--spacing-lg);
+}
+
+label {
+    display: block;
+    margin-bottom: var(--spacing-sm);
+    color: var(--color-text-secondary);
+    font-weight: 500;
+    font-size: var(--font-size-base);
+}
+
+.form-control {
+    width: 100%;
+    padding: var(--spacing-md);
+    border: 2px solid var(--color-border-light);
+    border-radius: var(--border-radius-sm);
+    font-size: var(--font-size-base);
+    transition: border-color 0.3s;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--color-focus);
+}
+
+/* Select Dropdown */
+select.form-control {
+    cursor: pointer;
+    background-color: white;
+}
+
+/* Input Number */
+input[type="number"].form-control {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+input[type="number"].form-control::-webkit-outer-spin-button,
+input[type="number"].form-control::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+/* ===================================
+   Form Validation Styles
+   =================================== */
+
+.error {
+    color: var(--color-error);
+    font-size: 12px;
+    margin-top: var(--spacing-xs);
+}
+
+.errorlist {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.errorlist li {
+    color: var(--color-error);
+    font-size: 12px;
+    margin-top: var(--spacing-xs);
+}
+
+/* Form Field with Error */
+.form-control.is-invalid {
+    border-color: var(--color-error);
+}

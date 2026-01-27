@@ -1,0 +1,118 @@
+/* ===================================
+   Button Styles
+   =================================== */
+
+.btn-submit {
+    width: 100%;
+    padding: 14px;
+    background: var(--gradient-button);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius-sm);
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.btn-submit:hover {
+    transform: translateY(-2px);
+}
+
+.btn-submit:active {
+    transform: translateY(0);
+}
+
+.btn-submit:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* ===================================
+   Alert/Message Styles
+   =================================== */
+
+.success {
+    background-color: var(--color-success-bg);
+    border: 1px solid var(--color-success-border);
+    color: var(--color-success-text);
+    padding: var(--spacing-md);
+    border-radius: var(--border-radius-sm);
+    margin-bottom: var(--spacing-lg);
+    text-align: center;
+}
+
+.alert {
+    padding: var(--spacing-md);
+    border-radius: var(--border-radius-sm);
+    margin-bottom: var(--spacing-lg);
+}
+
+.alert-error {
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+}
+
+.alert-warning {
+    background-color: #fff3cd;
+    border: 1px solid #ffeeba;
+    color: #856404;
+}
+
+.alert-info {
+    background-color: #d1ecf1;
+    border: 1px solid #bee5eb;
+    color: #0c5460;
+}
+
+/* ===================================
+   Card/Panel Styles
+   =================================== */
+
+.card {
+    background: white;
+    border-radius: var(--border-radius-md);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    padding: var(--spacing-lg);
+    margin-bottom: var(--spacing-lg);
+}
+
+.card-header {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin-bottom: var(--spacing-md);
+    padding-bottom: var(--spacing-sm);
+    border-bottom: 2px solid var(--color-border-light);
+}
+
+.card-body {
+    color: var(--color-text-secondary);
+}
+
+/* ===================================
+   Badge Styles
+   =================================== */
+
+.badge {
+    display: inline-block;
+    padding: 4px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 3px;
+    color: white;
+}
+
+.badge-primary {
+    background-color: var(--color-primary-blue);
+}
+
+.badge-secondary {
+    background-color: var(--color-primary-grey);
+}
+
+.badge-danger {
+    background-color: var(--color-primary-red);
+}

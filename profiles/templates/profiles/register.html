@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% load static %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Registration</title>
+    <link rel="stylesheet" href="{% static 'css/base.css' %}">
+    <link rel="stylesheet" href="{% static 'css/forms.css' %}">
+    <link rel="stylesheet" href="{% static 'css/components.css' %}">
+</head>
+<body>
+    <div class="container">
+        <h1>Employee Registration</h1>
+        
+        {% if success_message %}
+        <div class="success">
+            {{ success_message }}
+        </div>
+        {% endif %}
+        
+        <form method="POST" novalidate>
+            {% csrf_token %}
+            
+            <div class="form-group">
+                <label for="id_name">Name</label>
+                {{ form.name }}
+                {% if form.name.errors %}
+                    {{ form.name.errors }}
+                {% endif %}
+            </div>
+            
+            <div class="form-group">
+                <label for="id_age">Age</label>
+                {{ form.age }}
+                {% if form.age.errors %}
+                    {{ form.age.errors }}
+                {% endif %}
+            </div>
+            
+            <div class="form-group">
+                <label for="id_employee_id">Employee ID</label>
+                {{ form.employee_id }}
+                {% if form.employee_id.errors %}
+                    {{ form.employee_id.errors }}
+                {% endif %}
+            </div>
+            
+            <div class="form-group">
+                <label for="id_email">Email Address</label>
+                {{ form.email }}
+                {% if form.email.errors %}
+                    {{ form.email.errors }}
+                {% endif %}
+            </div>
+            
+            <div class="form-group">
+                <label for="id_password">Password</label>
+                {{ form.password }}
+                {% if form.password.errors %}
+                    {{ form.password.errors }}
+                {% endif %}
+                <small style="display: block; margin-top: 0.25rem; color: var(--color-text-secondary);">
+                    Max 6 characters, at least 3 letters
+                </small>
+            </div>
+            
+            <div class="form-group">
+                <label for="id_company">Company</label>
+                {{ form.company }}
+                {% if form.company.errors %}
+                    {{ form.company.errors }}
+                {% endif %}
+            </div>
+            
+            <div class="form-group">
+                <label for="id_department">Department</label>
+                {{ form.department }}
+                {% if form.department.errors %}
+                    {{ form.department.errors }}
+                {% endif %}
+            </div>
+            
+            <button type="submit" class="btn-submit">Register Employee</button>
+        </form>
+    </div>
+    
+    <script>
+        // Department filtering based on selected company
+        document.addEventListener('DOMContentLoaded', function() {
+            const companySelect = document.getElementById('id_company');
+            const departmentSelect = document.getElementById('id_department');
+            
+            // Store all department options
+            const allDepartments = Array.from(departmentSelect.options).filter(opt => opt.value);
+            
+            // Function to filter departments by company
+            function filterDepartments() {
+                const selectedCompanyId = companySelect.value;
+                
+                // Clear current department options except the first (empty) one
+                departmentSelect.innerHTML = '<option value="">Select a department</option>';
+                
+                if (!selectedCompanyId) {
+                    return;
+                }
+                
+                // Filter and add departments belonging to selected company
+                allDepartments.forEach(option => {
+                    const departmentId = option.value;
+                    const companyId = option.getAttribute('data-company-id');
+                    
+                    if (companyId === selectedCompanyId) {
+                        departmentSelect.add(option.cloneNode(true));
+                    }
+                });
+            }
+            
+            // Store company ID for each department option
+            allDepartments.forEach(option => {
+                // Extract company info from option text or use data attribute
+                // Format: "display_name (Company Name - City)"
+                const text = option.textContent;
+                const match = text.match(/\((.*?)\)$/);
+                if (match) {
+                    // Find the company option with this text
+                    const companyOptions = Array.from(companySelect.options);
+                    const companyOption = companyOptions.find(opt => 
+                        match[1] && opt.textContent.includes(match[1].split(' - ')[0])
+                    );
+                    if (companyOption) {
+                        option.setAttribute('data-company-id', companyOption.value);
+                    }
+                }
+            });
+            
+            // Add event listener to company dropdown
+            companySelect.addEventListener('change', filterDepartments);
+            
+            // Initial filter on page load
+            filterDepartments();
+        });
+    </script>
+</body>
+</html>

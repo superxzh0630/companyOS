@@ -1,0 +1,201 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>大枢纽仪表板 / Global Hub Dashboard - CompanyOS</title>
+    <link rel="stylesheet" href="{% static 'css/base.css' %}">
+    <link rel="stylesheet" href="{% static 'css/components.css' %}">
+    <style>
+        .hub-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #003071;
+        }
+        .stat-label {
+            color: #666;
+            margin-top: 0.5rem;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 1rem;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #28a745, #ffc107, #BA0C2F);
+            background-size: 300% 100%;
+            transition: width 0.5s ease;
+        }
+        .query-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .query-table th {
+            background: #003071;
+            color: white;
+            padding: 1rem;
+            text-align: left;
+        }
+        .query-table td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #eee;
+        }
+        .query-table tr:hover {
+            background: #f8f9fa;
+        }
+        .ghost-row {
+            background: rgba(255, 193, 7, 0.15) !important;
+            animation: fadeOut 5s ease-in-out;
+        }
+        .ghost-badge {
+            display: inline-block;
+            background: #ffc107;
+            color: #000;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            margin-left: 0.5rem;
+        }
+        @keyframes fadeOut {
+            0% { background: rgba(255, 193, 7, 0.3); }
+            100% { background: rgba(255, 193, 7, 0.1); }
+        }
+        .refresh-btn {
+            padding: 0.5rem 1rem;
+            background: #003071;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .refresh-btn:hover {
+            background: #002050;
+        }
+        .auto-refresh {
+            color: #666;
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h1>大枢纽仪表板 / Global Hub Dashboard</h1>
+                <nav>
+                    <a href="{% url 'index' %}">← 返回首页 / Back to Home</a> |
+                    <a href="{% url 'dashboard:department_self' %}">部门仪表板 / My Department</a>
+                </nav>
+            </div>
+            <div>
+                <button class="refresh-btn" onclick="location.reload();">刷新 / Refresh</button>
+                <p class="auto-refresh">自动刷新 / Auto-refresh: 30s</p>
+            </div>
+        </header>
+
+        <!-- Hub Statistics -->
+        <div class="hub-stats">
+            <div class="stat-card">
+                <div class="stat-value">{{ hub_count }}</div>
+                <div class="stat-label">枢纽中的任务 / In Hub</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: {{ hub_percentage }}%; background-position: {{ hub_percentage }}% 0;"></div>
+                </div>
+                <small>{{ hub_count }} / {{ hub_capacity }} ({{ hub_percentage|floatformat:1 }}%)</small>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" style="color: #ffc107;">{{ ghost_count }}</div>
+                <div class="stat-label">幽灵任务 / Ghost (5min)</div>
+                <small>刚被领取的任务 / Recently grabbed</small>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" style="color: #28a745;">{{ all_queries|length }}</div>
+                <div class="stat-label">总显示 / Total Displayed</div>
+                <small>Hub + Ghost</small>
+            </div>
+        </div>
+
+        <!-- Query Table -->
+        <h2>任务列表 / Query List</h2>
+        {% if all_queries %}
+            <table class="query-table">
+                <thead>
+                    <tr>
+                        <th>任务编号 / ID</th>
+                        <th>标题 / Title</th>
+                        <th>来源 / Source</th>
+                        <th>目标 / Target</th>
+                        <th>状态 / Status</th>
+                        <th>创建时间 / Created</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in all_queries %}
+                        <tr class="{% if item.is_ghost %}ghost-row{% endif %}">
+                            <td>
+                                <code>{{ item.ticket.t_tag }}</code>
+                                {% if item.is_ghost %}
+                                    <span class="ghost-badge">👻 GHOST</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ item.ticket.title }}</td>
+                            <td>{{ item.ticket.source_dept.name }}</td>
+                            <td>{{ item.ticket.target_dept.code }}</td>
+                            <td>
+                                {% if item.is_ghost %}
+                                    <span style="color: #ffc107;">RECEIVED (Ghost)</span>
+                                {% else %}
+                                    {{ item.ticket.get_status_display }}
+                                {% endif %}
+                            </td>
+                            <td>{{ item.ticket.created_at|date:"m-d H:i" }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div style="text-align: center; padding: 3rem; background: white; border-radius: 8px;">
+                <h3 style="color: #666;">枢纽为空 / Hub is Empty</h3>
+                <p>当前没有待处理的任务</p>
+            </div>
+        {% endif %}
+
+        <!-- API Endpoint Info -->
+        <div style="margin-top: 2rem; padding: 1rem; background: #f8f9fa; border-radius: 4px;">
+            <strong>API Endpoint:</strong> 
+            <code>GET {% url 'dashboard:global_hub_api' %}</code>
+            <small style="color: #666; margin-left: 1rem;">Returns JSON with hub_queries, ghost_queries, stats</small>
+        </div>
+    </div>
+
+    <script>
+        // Auto-refresh every 30 seconds
+        setTimeout(function() {
+            location.reload();
+        }, 30000);
+    </script>
+</body>
+</html>

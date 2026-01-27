@@ -1,0 +1,242 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ department.name }} 仪表板 / Department Dashboard - CompanyOS</title>
+    <link rel="stylesheet" href="{% static 'css/base.css' %}">
+    <link rel="stylesheet" href="{% static 'css/components.css' %}">
+    <style>
+        .dept-header {
+            background: linear-gradient(135deg, #003071, #004a9f);
+            color: white;
+            padding: 2rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+        }
+        .dept-header h1 {
+            margin: 0;
+            color: white;
+        }
+        .box-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .box-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .box-header {
+            padding: 1rem;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .box-header.receiver { background: #003071; }
+        .box-header.sender { background: #BA0C2F; }
+        .box-header.progress { background: #28a745; }
+        .box-content {
+            padding: 1rem;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .box-count {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+        .progress-container {
+            padding: 1.5rem;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e9ecef;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 1rem;
+        }
+        .progress-fill {
+            height: 100%;
+            border-radius: 15px;
+            transition: width 0.5s ease;
+        }
+        .progress-fill.green { background: #28a745; }
+        .progress-fill.yellow { background: #ffc107; }
+        .progress-fill.red { background: #BA0C2F; }
+        .query-item {
+            padding: 0.75rem;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+        }
+        .query-item:hover {
+            background: #f8f9fa;
+        }
+        .query-tag {
+            font-family: monospace;
+            color: #BA0C2F;
+            font-weight: bold;
+        }
+        .query-meta {
+            font-size: 0.875rem;
+            color: #666;
+            margin-top: 0.25rem;
+        }
+        .empty-box {
+            text-align: center;
+            padding: 2rem;
+            color: #999;
+        }
+        .section-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Department Header -->
+        <div class="dept-header">
+            <h1>{{ department.name }} ({{ department.code }})</h1>
+            <p style="margin: 0.5rem 0 0 0; opacity: 0.9;">部门仪表板 / Department Dashboard</p>
+            <nav style="margin-top: 1rem;">
+                <a href="{% url 'index' %}" style="color: white;">← 返回首页 / Home</a> |
+                <a href="{% url 'dashboard:global_hub' %}" style="color: white;">大枢纽 / Global Hub</a> |
+                <a href="{% url 'workspace:my_tasks' %}" style="color: white;">我的任务 / My Tasks</a>
+            </nav>
+        </div>
+
+        <!-- Box Grid -->
+        <div class="box-grid">
+            <!-- Receiver Box -->
+            <div class="box-card">
+                <div class="box-header receiver">
+                    <span>📥 接收箱 / Receiver Box</span>
+                    <span class="box-count">{{ receiver_count }}</span>
+                </div>
+                <div class="box-content">
+                    {% if receiver_queries %}
+                        {% for query in receiver_queries %}
+                            <div class="query-item">
+                                <div class="query-tag">{{ query.t_tag }}</div>
+                                <div>{{ query.title|truncatechars:30 }}</div>
+                                <div class="query-meta">
+                                    From: {{ query.source_dept.name }} | {{ query.grabbed_at|date:"m-d H:i" }}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="empty-box">
+                            <p>📭 暂无待领取任务</p>
+                            <p>No pending tasks</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Sender Box -->
+            <div class="box-card">
+                <div class="box-header sender">
+                    <span>📤 发送箱 / Sender Box</span>
+                    <span class="box-count">{{ sender_count }}</span>
+                </div>
+                <div class="box-content">
+                    {% if sender_queries %}
+                        {% for query in sender_queries %}
+                            <div class="query-item">
+                                <div class="query-tag">{{ query.t_tag }}</div>
+                                <div>{{ query.title|truncatechars:30 }}</div>
+                                <div class="query-meta">
+                                    To: {{ query.target_dept.code }} | {{ query.created_at|date:"m-d H:i" }}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="empty-box">
+                            <p>📭 暂无待发送任务</p>
+                            <p>No outgoing tasks</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- In Progress -->
+            <div class="box-card">
+                <div class="box-header progress">
+                    <span>⚙️ 处理中 / In Progress</span>
+                    <span class="box-count">{{ in_progress_count }}</span>
+                </div>
+                <div class="box-content">
+                    {% if in_progress_queries %}
+                        {% for query in in_progress_queries %}
+                            <div class="query-item">
+                                <div class="query-tag">{{ query.t_tag }}</div>
+                                <div>{{ query.title|truncatechars:30 }}</div>
+                                <div class="query-meta">
+                                    Owner: {{ query.current_owner.username }} | {{ query.grabbed_at|date:"m-d H:i" }}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="empty-box">
+                            <p>📭 暂无进行中任务</p>
+                            <p>No tasks in progress</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Capacity Section -->
+        <div class="box-card" style="margin-bottom: 2rem;">
+            <div class="box-header receiver">
+                <span>📊 接收箱容量 / Receiver Box Capacity</span>
+                <span>{{ receiver_count }} / {{ receiver_capacity }}</span>
+            </div>
+            <div class="progress-container">
+                <div class="progress-bar">
+                    {% if receiver_percentage < 50 %}
+                        <div class="progress-fill green" style="width: {{ receiver_percentage|floatformat:1 }}%;"></div>
+                    {% elif receiver_percentage < 80 %}
+                        <div class="progress-fill yellow" style="width: {{ receiver_percentage|floatformat:1 }}%;"></div>
+                    {% else %}
+                        <div class="progress-fill red" style="width: {{ receiver_percentage|floatformat:1 }}%;"></div>
+                    {% endif %}
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span>0</span>
+                    <span style="font-weight: bold; font-size: 1.25rem;">{{ receiver_percentage|floatformat:1 }}% 已使用 / Used</span>
+                    <span>{{ receiver_capacity }}</span>
+                </div>
+                {% if receiver_percentage >= 80 %}
+                    <div style="margin-top: 1rem; padding: 0.75rem; background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px;">
+                        ⚠️ 接收箱即将满载！请尽快处理任务。/ Receiver box is almost full! Please process tasks soon.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- API Endpoint Info -->
+        <div style="padding: 1rem; background: #f8f9fa; border-radius: 4px;">
+            <strong>API Endpoint:</strong> 
+            <code>GET {% url 'dashboard:department_api' department.code %}</code>
+            <small style="color: #666; margin-left: 1rem;">Returns JSON with receiver_box, sender_box, stats</small>
+        </div>
+    </div>
+
+    <script>
+        // Auto-refresh every 30 seconds
+        setTimeout(function() {
+            location.reload();
+        }, 30000);
+    </script>
+</body>
+</html>

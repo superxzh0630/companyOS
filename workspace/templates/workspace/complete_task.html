@@ -1,0 +1,192 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>完成任务 / Complete Task - {{ ticket.t_tag }}</title>
+    <link rel="stylesheet" href="{% static 'css/base.css' %}">
+    <link rel="stylesheet" href="{% static 'css/components.css' %}">
+    <link rel="stylesheet" href="{% static 'css/forms.css' %}">
+    <style>
+        .child-query-section {
+            display: none;
+            margin-top: 1.5rem;
+            padding: 1.5rem;
+            background-color: #f0f8ff;
+            border: 2px solid #003071;
+            border-radius: 8px;
+        }
+        .child-query-section.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header style="margin-bottom: 2rem;">
+            <h1>完成任务 / Complete Task</h1>
+            <nav>
+                <a href="{% url 'workspace:task_detail' ticket.id %}">← 返回任务详情 / Back to Task Detail</a>
+            </nav>
+        </header>
+
+        {% if messages %}
+            <div class="messages">
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <!-- Task Summary -->
+        <div style="border: 2px solid #BA0C2F; border-radius: 8px; padding: 1.5rem; background-color: #fff5f5; margin-bottom: 2rem;">
+            <h3 style="margin-top: 0; color: #BA0C2F;">
+                <code>{{ ticket.t_tag }}</code> - {{ ticket.title }}
+            </h3>
+            <p style="margin: 0; color: #666;">
+                <strong>来源:</strong> {{ ticket.source_dept.name }} | 
+                <strong>目标:</strong> {{ ticket.target_dept.code }} |
+                <strong>领取时间:</strong> {{ ticket.grabbed_at|date:"Y-m-d H:i" }}
+            </p>
+        </div>
+
+        <!-- Completion Form -->
+        <div style="background-color: white; padding: 2rem; border-radius: 8px; border: 1px solid #ddd;">
+            <form method="post" id="completeForm">
+                {% csrf_token %}
+                
+                <!-- Completion Notes -->
+                <div style="margin-bottom: 2rem;">
+                    <label style="display: block; font-weight: bold; margin-bottom: 0.5rem;">
+                        {{ form.completion_notes.label }}
+                    </label>
+                    {{ form.completion_notes }}
+                    {% if form.completion_notes.errors %}
+                        <div style="color: #BA0C2F; margin-top: 0.5rem;">
+                            {{ form.completion_notes.errors }}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Create Child Query Checkbox -->
+                <div style="margin-bottom: 1.5rem; padding: 1rem; background-color: #f9f9f9; border-radius: 4px;">
+                    <label style="display: flex; align-items: center; cursor: pointer;">
+                        {{ form.create_child_query }}
+                        <span style="margin-left: 0.5rem; font-weight: bold;">
+                            {{ form.create_child_query.label }}
+                        </span>
+                    </label>
+                    <p style="margin: 0.5rem 0 0 1.75rem; color: #666; font-size: 0.875rem;">
+                        完成此任务后需要创建新的子任务（例如：生成报价单、采购单等）<br>
+                        Create a child task after completing this one (e.g., generate quote, purchase order, etc.)
+                    </p>
+                </div>
+
+                <!-- Child Query Fields (Hidden by default) -->
+                <div id="childQuerySection" class="child-query-section">
+                    <h4 style="margin-top: 0; color: #003071;">子任务信息 / Child Task Information</h4>
+                    <p style="color: #666; margin-bottom: 1.5rem;">
+                        子任务将被放置在你的部门发送箱中，等待推送到大枢纽。<br>
+                        The child task will be placed in your department's sender box, ready to be pushed to the hub.
+                    </p>
+
+                    <!-- Query Type -->
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; font-weight: bold; margin-bottom: 0.5rem;">
+                            {{ form.child_query_type.label }}
+                        </label>
+                        {{ form.child_query_type }}
+                        <small style="display: block; margin-top: 0.25rem; color: #666;">
+                            {{ form.child_query_type.help_text }}
+                        </small>
+                        {% if form.child_query_type.errors %}
+                            <div style="color: #BA0C2F; margin-top: 0.5rem;">
+                                {{ form.child_query_type.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Target Department -->
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; font-weight: bold; margin-bottom: 0.5rem;">
+                            {{ form.child_target_dept.label }}
+                        </label>
+                        {{ form.child_target_dept }}
+                        {% if form.child_target_dept.errors %}
+                            <div style="color: #BA0C2F; margin-top: 0.5rem;">
+                                {{ form.child_target_dept.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Title -->
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; font-weight: bold; margin-bottom: 0.5rem;">
+                            {{ form.child_title.label }}
+                        </label>
+                        {{ form.child_title }}
+                        {% if form.child_title.errors %}
+                            <div style="color: #BA0C2F; margin-top: 0.5rem;">
+                                {{ form.child_title.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Content -->
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; font-weight: bold; margin-bottom: 0.5rem;">
+                            {{ form.child_content.label }}
+                        </label>
+                        {{ form.child_content }}
+                        {% if form.child_content.errors %}
+                            <div style="color: #BA0C2F; margin-top: 0.5rem;">
+                                {{ form.child_content.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div style="padding: 1rem; background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 4px;">
+                        <strong>注意 / Note:</strong> 
+                        子任务将引用父任务编号 {{ ticket.t_tag }}，并自动生成新的任务编号。<br>
+                        The child task will reference parent task {{ ticket.t_tag }} and receive a new task ID.
+                    </div>
+                </div>
+
+                <!-- Submit Buttons -->
+                <div style="display: flex; gap: 1rem; margin-top: 2rem; padding-top: 1.5rem; border-top: 2px solid #ddd;">
+                    <button type="submit" 
+                            style="padding: 0.75rem 2rem; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 1rem;">
+                        确认完成 / Confirm Completion
+                    </button>
+                    <a href="{% url 'workspace:task_detail' ticket.id %}" 
+                       style="padding: 0.75rem 2rem; background-color: #6c757d; color: white; text-decoration: none; border-radius: 4px; display: inline-block;">
+                        取消 / Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Toggle child query section
+        const checkbox = document.getElementById('id_create_child_query');
+        const childSection = document.getElementById('childQuerySection');
+        
+        checkbox.addEventListener('change', function() {
+            if (this.checked) {
+                childSection.classList.add('active');
+            } else {
+                childSection.classList.remove('active');
+            }
+        });
+
+        // Show section if checkbox is already checked (form errors)
+        if (checkbox.checked) {
+            childSection.classList.add('active');
+        }
+    </script>
+</body>
+</html>

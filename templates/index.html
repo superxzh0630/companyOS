@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% load static %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CompanyOS - Home</title>
+    <link rel="stylesheet" href="{% static 'css/base.css' %}">
+    <link rel="stylesheet" href="{% static 'css/forms.css' %}">
+    <link rel="stylesheet" href="{% static 'css/components.css' %}">
+</head>
+<body>
+    <div class="container">
+        <h1>CompanyOS - 企业运营系统</h1>
+        <p>Welcome to CompanyOS</p>
+        
+        <nav style="margin-top: 2rem;">
+            <h2>快速导航 / Quick Links</h2>
+            <ul style="list-style: none; padding: 0;">
+                <li style="margin-bottom: 1rem;">
+                    <a href="{% url 'workspace:my_tasks' %}" style="display: inline-block; padding: 1rem 2rem; background-color: #003071; color: white; text-decoration: none; border-radius: 4px; font-weight: bold;">
+                        📋 我的工作区 / My Workspace
+                    </a>
+                </li>
+                <li style="margin-bottom: 1rem;">
+                    <a href="{% url 'dashboard:global_hub' %}" style="display: inline-block; padding: 1rem 2rem; background-color: #28a745; color: white; text-decoration: none; border-radius: 4px; font-weight: bold;">
+                        🌐 大枢纽仪表板 / Global Hub Dashboard
+                    </a>
+                </li>
+                <li style="margin-bottom: 1rem;">
+                    <a href="{% url 'dashboard:department_self' %}" style="display: inline-block; padding: 1rem 2rem; background-color: #17a2b8; color: white; text-decoration: none; border-radius: 4px; font-weight: bold;">
+                        🏢 部门仪表板 / My Department Dashboard
+                    </a>
+                </li>
+                <li style="margin-bottom: 1rem;">
+                    <a href="{% url 'dashboard:admin_monitor' %}" style="display: inline-block; padding: 1rem 2rem; background-color: #6f42c1; color: white; text-decoration: none; border-radius: 4px; font-weight: bold;">
+                        🖥️ 管理员监控 / Admin Monitor
+                    </a>
+                </li>
+                <li style="margin-bottom: 1rem;">
+                    <a href="/admin/" style="display: inline-block; padding: 1rem 2rem; background-color: #BA0C2F; color: white; text-decoration: none; border-radius: 4px; font-weight: bold;">
+                        ⚙️ 管理后台 / Django Admin
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+</body>
+</html>

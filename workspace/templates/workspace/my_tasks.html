@@ -1,0 +1,169 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的任务 / My Tasks - CompanyOS</title>
+    <link rel="stylesheet" href="{% static 'css/base.css' %}">
+    <link rel="stylesheet" href="{% static 'css/components.css' %}">
+    <link rel="stylesheet" href="{% static 'css/forms.css' %}">
+</head>
+<body>
+    <div class="container">
+        <header style="margin-bottom: 2rem;">
+            <h1>我的工作区 / My Workspace</h1>
+            <p>欢迎, {{ user.username }} | 部门: {{ user_dept.name }} ({{ user_dept.code }})</p>
+            <nav>
+                <a href="{% url 'index' %}">← 返回首页 / Back to Home</a>
+            </nav>
+        </header>
+
+        {% if messages %}
+            <div class="messages">
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <!-- Available Tasks Section -->
+        <section style="margin-bottom: 3rem;">
+            <h2>可领取任务 / Available Tasks ({{ available_tasks.count }})</h2>
+            <p style="color: #666; margin-bottom: 1rem;">
+                来自部门接收箱的任务 / Tasks from your department's receiver box
+            </p>
+            
+            {% if available_tasks %}
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background-color: #f5f5f5;">
+                            <th style="padding: 0.75rem; text-align: left; border: 1px solid #ddd;">任务编号 / ID</th>
+                            <th style="padding: 0.75rem; text-align: left; border: 1px solid #ddd;">标题 / Title</th>
+                            <th style="padding: 0.75rem; text-align: left; border: 1px solid #ddd;">来源部门 / From</th>
+                            <th style="padding: 0.75rem; text-align: left; border: 1px solid #ddd;">创建时间 / Created</th>
+                            <th style="padding: 0.75rem; text-align: left; border: 1px solid #ddd;">操作 / Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for task in available_tasks %}
+                            <tr>
+                                <td style="padding: 0.75rem; border: 1px solid #ddd;">
+                                    <code>{{ task.t_tag }}</code>
+                                </td>
+                                <td style="padding: 0.75rem; border: 1px solid #ddd;">{{ task.title }}</td>
+                                <td style="padding: 0.75rem; border: 1px solid #ddd;">{{ task.source_dept.name }}</td>
+                                <td style="padding: 0.75rem; border: 1px solid #ddd;">{{ task.created_at|date:"Y-m-d H:i" }}</td>
+                                <td style="padding: 0.75rem; border: 1px solid #ddd;">
+                                    <a href="{% url 'workspace:pick_up_task' task.id %}" 
+                                       class="btn-primary" 
+                                       style="display: inline-block; padding: 0.5rem 1rem; background-color: #BA0C2F; color: white; text-decoration: none; border-radius: 4px;"
+                                       onclick="return confirm('确认领取此任务？/ Confirm pick up this task?');">
+                                        领取 / Pick Up
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p style="padding: 2rem; background-color: #f9f9f9; border-radius: 4px; text-align: center;">
+                    暂无可领取的任务 / No available tasks at the moment
+                </p>
+            {% endif %}
+        </section>
+
+        <!-- My Assigned Tasks Section -->
+        <section style="margin-bottom: 3rem;">
+            <h2>我的任务 / My Assigned Tasks ({{ my_assigned_tasks.count }})</h2>
+            
+            {% if my_assigned_tasks %}
+                <div style="display: grid; gap: 1rem;">
+                    {% for task in my_assigned_tasks %}
+                        <div style="border: 2px solid #003071; border-radius: 8px; padding: 1.5rem; background-color: #f8f9fa;">
+                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                                <div>
+                                    <h3 style="margin: 0 0 0.5rem 0;">
+                                        <code style="color: #BA0C2F;">{{ task.t_tag }}</code> - {{ task.title }}
+                                    </h3>
+                                    <p style="margin: 0; color: #666;">
+                                        来源: {{ task.source_dept.name }} | 
+                                        领取时间: {{ task.grabbed_at|date:"Y-m-d H:i" }}
+                                    </p>
+                                </div>
+                                <span style="background-color: #003071; color: white; padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.875rem;">
+                                    进行中 / In Progress
+                                </span>
+                            </div>
+                            
+                            <div style="background-color: white; padding: 1rem; border-radius: 4px; margin-bottom: 1rem;">
+                                <p style="margin: 0; white-space: pre-wrap;">{{ task.content }}</p>
+                            </div>
+                            
+                            {% if task.attachments.all %}
+                                <div style="margin-bottom: 1rem;">
+                                    <strong>附件 / Attachments:</strong>
+                                    {% for attachment in task.attachments.all %}
+                                        <span style="display: inline-block; margin-right: 0.5rem; padding: 0.25rem 0.5rem; background-color: #e9ecef; border-radius: 4px;">
+                                            {{ attachment.sequence_letter }} - {{ attachment.original_filename }}
+                                        </span>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            
+                            <div style="display: flex; gap: 1rem;">
+                                <a href="{% url 'workspace:task_detail' task.id %}" 
+                                   style="padding: 0.5rem 1rem; background-color: #003071; color: white; text-decoration: none; border-radius: 4px;">
+                                    查看详情 / View Details
+                                </a>
+                                <a href="{% url 'workspace:complete_task' task.id %}" 
+                                   style="padding: 0.5rem 1rem; background-color: #28a745; color: white; text-decoration: none; border-radius: 4px;">
+                                    完成任务 / Complete Task
+                                </a>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p style="padding: 2rem; background-color: #f9f9f9; border-radius: 4px; text-align: center;">
+                    你当前没有进行中的任务 / You have no tasks in progress
+                </p>
+            {% endif %}
+        </section>
+
+        <!-- Completed Tasks Section -->
+        <section>
+            <h2>已完成任务 / Completed Tasks (最近20条 / Last 20)</h2>
+            
+            {% if my_completed_tasks %}
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background-color: #f5f5f5;">
+                            <th style="padding: 0.75rem; text-align: left; border: 1px solid #ddd;">任务编号 / ID</th>
+                            <th style="padding: 0.75rem; text-align: left; border: 1px solid #ddd;">标题 / Title</th>
+                            <th style="padding: 0.75rem; text-align: left; border: 1px solid #ddd;">完成时间 / Completed</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for task in my_completed_tasks %}
+                            <tr>
+                                <td style="padding: 0.75rem; border: 1px solid #ddd;">
+                                    <code>{{ task.t_tag }}</code>
+                                </td>
+                                <td style="padding: 0.75rem; border: 1px solid #ddd;">{{ task.title }}</td>
+                                <td style="padding: 0.75rem; border: 1px solid #ddd;">{{ task.completed_at|date:"Y-m-d H:i" }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p style="padding: 2rem; background-color: #f9f9f9; border-radius: 4px; text-align: center;">
+                    暂无已完成的任务记录 / No completed tasks yet
+                </p>
+            {% endif %}
+        </section>
+    </div>
+</body>
+</html>
