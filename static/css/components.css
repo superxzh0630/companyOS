@@ -116,3 +116,18 @@
 .badge-danger {
     background-color: var(--color-primary-red);
 }
+
+/* Logout button styled as link */
+button.logout-link {
+    background: none;
+    border: none;
+    color: var(--color-primary-blue);
+    cursor: pointer;
+    text-decoration: underline;
+    padding: 0;
+    font: inherit;
+}
+
+button.logout-link:hover {
+    color: var(--color-accent-red);
+}

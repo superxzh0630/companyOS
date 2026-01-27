@@ -117,7 +117,10 @@
         
         <div class="action-buttons">
             <a href="{% url 'index' %}" class="btn-primary">← 返回首页 / Back to Home</a>
-            <a href="{% url 'logout' %}" class="btn-secondary">🚪 Logout / 退出</a>
+            <form method="POST" action="{% url 'logout' %}" style="display: inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn-secondary">🚪 Logout / 退出</button>
+            </form>
         </div>
     </div>
 </body>

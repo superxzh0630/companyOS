@@ -142,9 +142,12 @@ STORAGE_DIR = BASE_DIR / "storage"
 DEFAULT_FILE_STORAGE = "django.core.files.storage.FileSystemStorage"
 
 # Authentication settings
-LOGIN_URL = "login"
-LOGIN_REDIRECT_URL = "index"
-LOGOUT_REDIRECT_URL = "login"
+# Redirect to the 'login' named URL if a user is not authenticated
+LOGIN_URL = 'login'
+# Redirect to the dashboard after successful login
+LOGIN_REDIRECT_URL = 'index'
+# Redirect to login page after logout
+LOGOUT_REDIRECT_URL = 'login'
 
 # Session settings
 SESSION_COOKIE_AGE = 1209600  # 2 weeks in seconds

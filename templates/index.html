@@ -18,7 +18,12 @@
             {% endif %}
         </p>
         <p style="margin-top: 0.5rem;">
-            <a href="{% url 'logout' %}" style="color: #BA0C2F;">🚪 Logout / 退出登录</a>
+            <form method="POST" action="{% url 'logout' %}" style="display: inline;">
+                {% csrf_token %}
+                <button type="submit" style="background: none; border: none; color: #BA0C2F; cursor: pointer; text-decoration: underline; padding: 0; font: inherit;">
+                    🚪 Logout / 退出登录
+                </button>
+            </form>
         </p>
         
         <nav style="margin-top: 2rem;">

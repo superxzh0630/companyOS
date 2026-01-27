@@ -19,13 +19,17 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.contrib.auth import views as auth_views
 from . import views
 
 urlpatterns = [
     path("", views.index, name="index"),
     path("admin/", admin.site.urls),
+    # Use the built-in LoginView but point it to the standard template
+    path('login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),
+    path('logout/', auth_views.LogoutView.as_view(), name='logout'),
     path("accounts/", include("django.contrib.auth.urls")),
-    path("", include("authentication.urls")),
+    path("auth/", include("authentication.urls")),
     path("profiles/", include("profiles.urls")),
     path("workspace/", include("workspace.urls")),
     path("dashboard/", include("dashboard.urls")),
