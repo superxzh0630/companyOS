@@ -2,6 +2,7 @@ import os
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 from profiles.models import Department
 
 
@@ -60,6 +61,121 @@ class DailySequence(models.Model):
         return f"{self.date} - Sequence: {self.sequence}"
 
 
+# ============================================================================
+# Dynamic Query Type Definitions (Admin Configurable)
+# ============================================================================
+
+class QueryType(models.Model):
+    """
+    Blueprint for a query type that Admins can configure.
+    Defines what kind of queries exist and which departments can receive them.
+    """
+    name = models.CharField(
+        max_length=100,
+        unique=True,
+        verbose_name="Query Type Name",
+        help_text="e.g., 'Purchase Request', 'IT Support', 'Leave Application'"
+    )
+    code = models.SlugField(
+        max_length=20,
+        unique=True,
+        verbose_name="Type Code",
+        help_text="Short code for t_tag generation (e.g., 'PR', 'IT', 'LA')"
+    )
+    allowed_departments = models.ManyToManyField(
+        Department,
+        related_name='accepted_query_types',
+        verbose_name="Allowed Departments",
+        help_text="Departments that can receive this type of query"
+    )
+    description = models.TextField(
+        blank=True,
+        verbose_name="Description",
+        help_text="Detailed description of this query type"
+    )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name="Is Active",
+        help_text="Inactive query types cannot be used for new tickets"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "Query Type"
+        verbose_name_plural = "Query Types"
+        ordering = ['name']
+    
+    def __str__(self):
+        return f"{self.name} ({self.code})"
+
+
+class QueryFieldDefinition(models.Model):
+    """
+    Dynamic field definition for a QueryType.
+    Allows Admin to define custom fields for each query type.
+    """
+    class FieldType(models.TextChoices):
+        TEXT = 'TEXT', 'Text (Single Line)'
+        TEXTAREA = 'TEXTAREA', 'Text (Multi Line)'
+        INTEGER = 'INTEGER', 'Integer Number'
+        DECIMAL = 'DECIMAL', 'Decimal Number'
+        DATE = 'DATE', 'Date'
+        FILE = 'FILE', 'File Upload'
+        BOOLEAN = 'BOOLEAN', 'Yes/No Checkbox'
+    
+    query_type = models.ForeignKey(
+        QueryType,
+        on_delete=models.CASCADE,
+        related_name='fields',
+        verbose_name="Query Type"
+    )
+    label = models.CharField(
+        max_length=100,
+        verbose_name="Field Label",
+        help_text="Display label (e.g., 'Reason for Purchase')"
+    )
+    field_key = models.SlugField(
+        max_length=50,
+        verbose_name="Field Key",
+        help_text="Key for JSON storage (e.g., 'reason_purchase'). Use lowercase with underscores."
+    )
+    field_type = models.CharField(
+        max_length=20,
+        choices=FieldType.choices,
+        default=FieldType.TEXT,
+        verbose_name="Field Type"
+    )
+    required = models.BooleanField(
+        default=True,
+        verbose_name="Required"
+    )
+    order = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Display Order",
+        help_text="Fields are displayed in ascending order"
+    )
+    placeholder = models.CharField(
+        max_length=200,
+        blank=True,
+        verbose_name="Placeholder Text"
+    )
+    help_text = models.CharField(
+        max_length=200,
+        blank=True,
+        verbose_name="Help Text"
+    )
+    
+    class Meta:
+        verbose_name = "Query Field Definition"
+        verbose_name_plural = "Query Field Definitions"
+        ordering = ['query_type', 'order', 'id']
+        unique_together = ['query_type', 'field_key']
+    
+    def __str__(self):
+        return f"{self.query_type.name} - {self.label} ({self.field_key})"
+
+
 class QueryTicket(models.Model):
     """
     Main query/ticket model for inter-departmental workflows.
@@ -88,7 +204,26 @@ class QueryTicket(models.Model):
     
     # Content fields
     title = models.CharField(max_length=200, verbose_name="Title")
-    content = models.TextField(verbose_name="Content")
+    content = models.TextField(verbose_name="Content", blank=True)
+    
+    # Dynamic Query Type (optional for backward compatibility)
+    query_type = models.ForeignKey(
+        QueryType,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='tickets',
+        verbose_name="Query Type",
+        help_text="Dynamic query type definition"
+    )
+    
+    # JSON storage for dynamic field values (non-file fields)
+    content_data = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name="Content Data",
+        help_text="JSON storage for dynamic form field values"
+    )
     
     # Status and location
     status = models.CharField(
@@ -114,6 +249,8 @@ class QueryTicket(models.Model):
     target_dept = models.ForeignKey(
         Department,
         on_delete=models.PROTECT,
+        null=True,
+        blank=True,
         related_name='received_tickets',
         verbose_name="Target Department"
     )
@@ -241,3 +378,85 @@ class QueryAttachment(models.Model):
     
     def __str__(self):
         return f"{self.query_ticket.t_tag}-{self.sequence_letter} ({self.original_filename})"
+
+
+# ============================================================================
+# Dynamic Ticket Attachment (for Dynamic Query Field FILE types)
+# ============================================================================
+
+def dynamic_media_path(instance, filename):
+    """
+    Generate dynamic upload path for ticket attachments.
+    Format: media/{DEPT_CODE}/{USERNAME}/{YYYY-MM-DD}/{FILENAME}
+    """
+    try:
+        dept = instance.ticket.current_owner.employeeprofile.department.code
+    except (AttributeError, Exception):
+        # Fallback to source_dept if owner doesn't have profile
+        try:
+            dept = instance.ticket.source_dept.code
+        except (AttributeError, Exception):
+            dept = "GENERAL"
+    
+    try:
+        user = instance.ticket.current_owner.username if instance.ticket.current_owner else "anonymous"
+    except (AttributeError, Exception):
+        user = "anonymous"
+    
+    # Use current date if created_at not set yet
+    if instance.created_at:
+        date_str = instance.created_at.strftime('%Y-%m-%d')
+    else:
+        date_str = timezone.now().strftime('%Y-%m-%d')
+    
+    return f'media/{dept}/{user}/{date_str}/{filename}'
+
+
+class TicketAttachment(models.Model):
+    """
+    File attachments linked to specific dynamic query fields.
+    Stores files in structured path: media/{DEPT}/{USER}/{DATE}/{FILENAME}
+    """
+    ticket = models.ForeignKey(
+        QueryTicket,
+        on_delete=models.CASCADE,
+        related_name='dynamic_attachments',
+        verbose_name="Query Ticket"
+    )
+    field_definition = models.ForeignKey(
+        QueryFieldDefinition,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='attachments',
+        verbose_name="Field Definition",
+        help_text="The dynamic field this file belongs to"
+    )
+    file = models.FileField(
+        upload_to=dynamic_media_path,
+        verbose_name="File"
+    )
+    original_filename = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name="Original Filename"
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Created At"
+    )
+    
+    class Meta:
+        verbose_name = "Ticket Attachment"
+        verbose_name_plural = "Ticket Attachments"
+        ordering = ['created_at']
+    
+    def save(self, *args, **kwargs):
+        """Store original filename before saving."""
+        if self.file and not self.original_filename:
+            self.original_filename = os.path.basename(self.file.name)
+        super().save(*args, **kwargs)
+    
+    def __str__(self):
+        field_label = self.field_definition.label if self.field_definition else "General"
+        return f"{self.ticket.t_tag} - {field_label} - {self.original_filename}"

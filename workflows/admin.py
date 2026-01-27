@@ -1,7 +1,10 @@
 from django.contrib import admin
 from django.contrib import messages
 from django.utils.html import format_html
-from .models import SystemConfig, DailySequence, QueryTicket, QueryAttachment
+from .models import (
+    SystemConfig, DailySequence, QueryTicket, QueryAttachment,
+    QueryType, QueryFieldDefinition, TicketAttachment
+)
 from .services import push_to_hub, run_dept_grabber, HubOverflowError, ReceiverBoxFullError
 
 
@@ -36,6 +39,77 @@ class DailySequenceAdmin(admin.ModelAdmin):
         return False
 
 
+# ============================================================================
+# Dynamic Query Type Administration
+# ============================================================================
+
+class QueryFieldDefinitionInline(admin.TabularInline):
+    """
+    Inline editor for QueryFieldDefinition within QueryType admin.
+    Allows Admin to define fields directly on the Query Type page.
+    """
+    model = QueryFieldDefinition
+    extra = 1
+    fields = ('label', 'field_key', 'field_type', 'required', 'order', 'placeholder', 'help_text')
+    ordering = ('order', 'id')
+
+
+@admin.register(QueryType)
+class QueryTypeAdmin(admin.ModelAdmin):
+    """
+    Admin interface for configuring Query Types.
+    Features inline field editing and easy department selection.
+    """
+    list_display = ('name', 'code', 'is_active', 'get_departments', 'get_field_count', 'updated_at')
+    list_filter = ('is_active', 'allowed_departments', 'created_at')
+    search_fields = ('name', 'code', 'description')
+    readonly_fields = ('created_at', 'updated_at')
+    filter_horizontal = ('allowed_departments',)
+    inlines = [QueryFieldDefinitionInline]
+    prepopulated_fields = {'code': ('name',)}
+    ordering = ('name',)
+    
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('name', 'code', 'description', 'is_active')
+        }),
+        ('Department Configuration', {
+            'fields': ('allowed_departments',),
+            'description': 'Select which departments can receive this type of query.'
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def get_departments(self, obj):
+        """Display list of allowed departments."""
+        depts = obj.allowed_departments.all()[:3]
+        dept_codes = [d.code for d in depts]
+        if obj.allowed_departments.count() > 3:
+            dept_codes.append(f"+{obj.allowed_departments.count() - 3} more")
+        return ", ".join(dept_codes) if dept_codes else "-"
+    get_departments.short_description = "Allowed Depts"
+    
+    def get_field_count(self, obj):
+        """Display count of defined fields."""
+        return obj.fields.count()
+    get_field_count.short_description = "Fields"
+
+
+@admin.register(QueryFieldDefinition)
+class QueryFieldDefinitionAdmin(admin.ModelAdmin):
+    """
+    Admin interface for Query Field Definitions.
+    Primarily for bulk editing; inline editing is preferred.
+    """
+    list_display = ('query_type', 'label', 'field_key', 'field_type', 'required', 'order')
+    list_filter = ('query_type', 'field_type', 'required')
+    search_fields = ('label', 'field_key', 'query_type__name')
+    ordering = ('query_type', 'order')
+
+
 @admin.register(QueryTicket)
 class QueryTicketAdmin(admin.ModelAdmin):
     """
@@ -44,6 +118,7 @@ class QueryTicketAdmin(admin.ModelAdmin):
     list_display = (
         't_tag',
         'title',
+        'query_type',
         'status',
         'location',
         'source_dept',
@@ -51,16 +126,21 @@ class QueryTicketAdmin(admin.ModelAdmin):
         'current_owner',
         'created_at'
     )
-    list_filter = ('status', 'location', 'source_dept', 'target_dept', 'created_at')
+    list_filter = ('status', 'location', 'query_type', 'source_dept', 'target_dept', 'created_at')
     search_fields = ('t_tag', 'title', 'content', 'target_dept__code', 'target_dept__name')
-    readonly_fields = ('t_tag', 'created_at', 'grabbed_at', 'completed_at')
+    readonly_fields = ('t_tag', 'created_at', 'grabbed_at', 'completed_at', 'content_data')
     ordering = ('-created_at',)
     actions = ['push_to_hub_action', 'run_grabber_action', 'delete_selected_queries']
-    autocomplete_fields = ['target_dept', 'source_dept']
+    autocomplete_fields = ['target_dept', 'source_dept', 'query_type']
     
     fieldsets = (
         ('Ticket Information', {
-            'fields': ('t_tag', 'title', 'content')
+            'fields': ('t_tag', 'query_type', 'title', 'content')
+        }),
+        ('Dynamic Content Data', {
+            'fields': ('content_data',),
+            'classes': ('collapse',),
+            'description': 'JSON data from dynamic form fields'
         }),
         ('Status & Location', {
             'fields': ('status', 'location')
@@ -203,3 +283,15 @@ class QueryAttachmentAdmin(admin.ModelAdmin):
     def has_add_permission(self, request):
         """Allow adding attachments through admin."""
         return True
+
+
+@admin.register(TicketAttachment)
+class TicketAttachmentAdmin(admin.ModelAdmin):
+    """
+    Admin interface for Dynamic Ticket Attachments.
+    """
+    list_display = ('ticket', 'field_definition', 'original_filename', 'created_at')
+    list_filter = ('created_at', 'field_definition__query_type')
+    search_fields = ('ticket__t_tag', 'original_filename', 'field_definition__label')
+    readonly_fields = ('original_filename', 'created_at')
+    raw_id_fields = ('ticket', 'field_definition')

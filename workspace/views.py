@@ -6,9 +6,14 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db import transaction
 from django.utils import timezone
-from workflows.models import QueryTicket, QueryAttachment
+from django.core.exceptions import PermissionDenied
+from workflows.models import (
+    QueryTicket, QueryAttachment, QueryType, 
+    QueryFieldDefinition, TicketAttachment
+)
 from workflows.utils import generate_t_tag
-from .forms import CompleteTaskForm, AttachmentUploadForm
+from profiles.models import Department
+from .forms import CompleteTaskForm, AttachmentUploadForm, DynamicTicketForm
 
 
 @login_required
@@ -213,3 +218,196 @@ def complete_task(request, ticket_id):
     }
     
     return render(request, 'workspace/complete_task.html', context)
+
+
+# ============================================================================
+# User Workspace with Pinyin/Username URL
+# ============================================================================
+
+@login_required
+def user_workspace(request, username):
+    """
+    User-specific workspace view with username in URL.
+    Provides access to departments and query types for creating new tickets.
+    
+    Security: Users can only access their own workspace.
+    """
+    # Security Check - users can only access their own workspace
+    if request.user.username != username:
+        raise PermissionDenied("You cannot access another colleague's workspace.")
+    
+    # Get user's employee profile
+    try:
+        employee_profile = request.user.employeeprofile
+        user_dept = employee_profile.department
+    except:
+        messages.error(
+            request, 
+            "你没有员工档案。请联系管理员。/ You don't have an employee profile. Please contact admin."
+        )
+        return redirect('index')
+    
+    # Fetch all departments for the "Select Department" dropdown
+    all_departments = Department.objects.all().order_by('name')
+    
+    # Fetch all active query types for display
+    all_query_types = QueryType.objects.filter(is_active=True).prefetch_related(
+        'allowed_departments', 'fields'
+    ).order_by('name')
+    
+    # Build a mapping of department -> available query types for frontend filtering
+    dept_query_types = {}
+    for dept in all_departments:
+        dept_query_types[dept.code] = list(
+            QueryType.objects.filter(
+                is_active=True,
+                allowed_departments=dept
+            ).values('id', 'name', 'code', 'description')
+        )
+    
+    # Get user's assigned tasks
+    my_assigned_tasks = QueryTicket.objects.filter(
+        current_owner=request.user,
+        status=QueryTicket.Status.ASSIGNED
+    ).select_related('source_dept', 'query_type').order_by('grabbed_at')
+    
+    # Get available tasks in department's receiver box
+    available_tasks = QueryTicket.objects.filter(
+        target_dept=user_dept,
+        location=QueryTicket.Location.RECEIVER_BOX,
+        status=QueryTicket.Status.RECEIVED
+    ).select_related('source_dept', 'query_type').order_by('created_at')
+    
+    context = {
+        'username': username,
+        'user_dept': user_dept,
+        'all_departments': all_departments,
+        'all_query_types': all_query_types,
+        'dept_query_types_json': dept_query_types,  # For JavaScript filtering
+        'my_assigned_tasks': my_assigned_tasks,
+        'available_tasks': available_tasks,
+    }
+    
+    return render(request, 'workspace/user_workspace.html', context)
+
+
+# ============================================================================
+# Dynamic Ticket Creation
+# ============================================================================
+
+@login_required
+@transaction.atomic
+def create_ticket_view(request, query_type_id, dept_code=None):
+    """
+    Create a new ticket using dynamic form based on QueryType definition.
+    Handles both regular fields (stored in content_data JSON) and 
+    file fields (stored as TicketAttachment objects).
+    """
+    # Get the query type
+    query_type = get_object_or_404(QueryType, id=query_type_id, is_active=True)
+    
+    # Get user's employee profile
+    try:
+        employee_profile = request.user.employeeprofile
+        user_dept = employee_profile.department
+    except:
+        messages.error(
+            request,
+            "你没有员工档案。请联系管理员。/ You don't have an employee profile. Please contact admin."
+        )
+        return redirect('index')
+    
+    # Determine target department
+    if dept_code:
+        target_dept = get_object_or_404(Department, code=dept_code)
+    else:
+        # Let user choose from allowed departments
+        target_dept = None
+    
+    # Validate that target department can receive this query type
+    if target_dept and not query_type.allowed_departments.filter(id=target_dept.id).exists():
+        messages.error(
+            request,
+            f"部门 {target_dept.name} 不接受 {query_type.name} 类型的工单。/ "
+            f"Department {target_dept.name} does not accept {query_type.name} queries."
+        )
+        return redirect('workspace:my_tasks')
+    
+    # Get allowed departments for this query type
+    allowed_depts = query_type.allowed_departments.all()
+    
+    if request.method == 'POST':
+        form = DynamicTicketForm(
+            data=request.POST,
+            files=request.FILES,
+            query_type=query_type
+        )
+        
+        # Get target department from form if not in URL
+        post_target_dept_code = request.POST.get('target_department')
+        if not target_dept and post_target_dept_code:
+            target_dept = get_object_or_404(Department, code=post_target_dept_code)
+        
+        if not target_dept:
+            messages.error(request, "请选择目标部门。/ Please select a target department.")
+        elif form.is_valid():
+            # Generate t_tag
+            t_tag = generate_t_tag(query_type.code, target_dept.code)
+            
+            # Separate file fields from regular fields
+            content_data = {}
+            file_fields = {}
+            
+            for field_def in query_type.fields.all():
+                field_key = field_def.field_key
+                value = form.cleaned_data.get(field_key)
+                
+                if field_def.field_type == QueryFieldDefinition.FieldType.FILE:
+                    if value:  # File was uploaded
+                        file_fields[field_key] = (value, field_def)
+                else:
+                    # Convert non-serializable types
+                    if hasattr(value, 'isoformat'):  # Date/datetime
+                        content_data[field_key] = value.isoformat()
+                    elif value is not None:
+                        content_data[field_key] = value
+            
+            # Create the ticket
+            ticket = QueryTicket.objects.create(
+                t_tag=t_tag,
+                title=form.cleaned_data.get('title', f"{query_type.name} - {t_tag}"),
+                content=form.cleaned_data.get('description', ''),
+                query_type=query_type,
+                content_data=content_data,
+                status=QueryTicket.Status.PENDING,
+                location=QueryTicket.Location.SENDER_BOX,
+                source_dept=user_dept,
+                target_dept=target_dept,
+                current_owner=request.user
+            )
+            
+            # Create file attachments
+            for field_key, (file_obj, field_def) in file_fields.items():
+                TicketAttachment.objects.create(
+                    ticket=ticket,
+                    field_definition=field_def,
+                    file=file_obj
+                )
+            
+            messages.success(
+                request,
+                f"工单 {t_tag} 创建成功！/ Ticket {t_tag} created successfully!"
+            )
+            return redirect('workspace:my_tasks')
+    else:
+        form = DynamicTicketForm(query_type=query_type)
+    
+    context = {
+        'query_type': query_type,
+        'form': form,
+        'target_dept': target_dept,
+        'allowed_depts': allowed_depts,
+        'user_dept': user_dept,
+    }
+    
+    return render(request, 'workspace/create_ticket.html', context)
