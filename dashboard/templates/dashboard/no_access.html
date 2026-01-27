@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% load static %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CompanyOS - Setup Required</title>
+    <link rel="stylesheet" href="{% static 'css/base.css' %}">
+    <link rel="stylesheet" href="{% static 'css/forms.css' %}">
+    <link rel="stylesheet" href="{% static 'css/components.css' %}">
+    <style>
+        body {
+            background: #f5f5f5;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            padding: 1rem;
+        }
+        
+        .error-container {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 500px;
+        }
+        
+        .error-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+        
+        .error-title {
+            color: #BA0C2F;
+            margin: 0 0 1rem 0;
+            font-size: 1.5rem;
+        }
+        
+        .error-message {
+            color: #333;
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+        }
+        
+        .error-message-cn {
+            color: #666;
+            margin-bottom: 1.5rem;
+        }
+        
+        .help-box {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 4px;
+            padding: 1rem;
+            margin: 1.5rem 0;
+            text-align: left;
+        }
+        
+        .help-box strong {
+            color: #856404;
+        }
+        
+        .help-box p {
+            margin: 0.5rem 0 0 0;
+            color: #856404;
+        }
+        
+        .action-buttons {
+            margin-top: 2rem;
+        }
+        
+        .action-buttons a {
+            display: inline-block;
+            padding: 0.75rem 1.5rem;
+            margin: 0.25rem;
+            border-radius: 4px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        
+        .btn-primary {
+            background: #003071;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #002255;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <div class="error-icon">🔧</div>
+        <h1 class="error-title">Setup Required / 需要设置</h1>
+        
+        <p class="error-message">{{ message }}</p>
+        <p class="error-message-cn">{{ message_cn }}</p>
+        
+        <div class="help-box">
+            <strong>💡 What to do / 怎么办:</strong>
+            <p>Please contact your IT administrator or HR department to link your account to a department.</p>
+            <p>请联系IT管理员或人力资源部门将您的账户与部门关联。</p>
+        </div>
+        
+        <div class="action-buttons">
+            <a href="{% url 'index' %}" class="btn-primary">← 返回首页 / Back to Home</a>
+            <a href="{% url 'logout' %}" class="btn-secondary">🚪 Logout / 退出</a>
+        </div>
+    </div>
+</body>
+</html>

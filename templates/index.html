@@ -12,7 +12,14 @@
 <body>
     <div class="container">
         <h1>CompanyOS - 企业运营系统</h1>
-        <p>Welcome to CompanyOS</p>
+        <p>Welcome, <strong>{{ request.user.username }}</strong>! 
+            {% if request.user.is_superuser %}
+                <span style="color: #BA0C2F; font-weight: bold;">👑 Administrator</span>
+            {% endif %}
+        </p>
+        <p style="margin-top: 0.5rem;">
+            <a href="{% url 'logout' %}" style="color: #BA0C2F;">🚪 Logout / 退出登录</a>
+        </p>
         
         <nav style="margin-top: 2rem;">
             <h2>快速导航 / Quick Links</h2>
@@ -28,7 +35,7 @@
                     </a>
                 </li>
                 <li style="margin-bottom: 1rem;">
-                    <a href="{% url 'dashboard:department_self' %}" style="display: inline-block; padding: 1rem 2rem; background-color: #17a2b8; color: white; text-decoration: none; border-radius: 4px; font-weight: bold;">
+                    <a href="{% url 'dashboard:router' %}" style="display: inline-block; padding: 1rem 2rem; background-color: #17a2b8; color: white; text-decoration: none; border-radius: 4px; font-weight: bold;">
                         🏢 部门仪表板 / My Department Dashboard
                     </a>
                 </li>

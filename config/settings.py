@@ -142,29 +142,18 @@ STORAGE_DIR = BASE_DIR / "storage"
 DEFAULT_FILE_STORAGE = "django.core.files.storage.FileSystemStorage"
 
 # Authentication settings
-LOGIN_URL = "/auth/login/"
-LOGIN_REDIRECT_URL = "/profiles/register/"
-LOGOUT_REDIRECT_URL = "/auth/login/"
-
-# Email backend for password reset (console for development)
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+LOGIN_URL = "login"
+LOGIN_REDIRECT_URL = "index"
+LOGOUT_REDIRECT_URL = "login"
 
 # Session settings
 SESSION_COOKIE_AGE = 1209600  # 2 weeks in seconds
+SESSION_SAVE_EVERY_REQUEST = False
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/6.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-
-# Authentication settings
-LOGIN_URL = "/auth/login/"
-LOGIN_REDIRECT_URL = "/profiles/register/"
-LOGOUT_REDIRECT_URL = "/auth/login/"
-
-# Session settings
-SESSION_COOKIE_AGE = 1209600  # 2 weeks in seconds
-SESSION_SAVE_EVERY_REQUEST = False
 
 # Email settings (for password reset)
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"

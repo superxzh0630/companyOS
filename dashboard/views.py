@@ -4,8 +4,9 @@ Provides Global Hub, Department, and Admin Monitor views.
 """
 import json
 from datetime import timedelta
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.http import JsonResponse
+from django.core.exceptions import PermissionDenied
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.admin.views.decorators import staff_member_required
 from django.utils import timezone
@@ -119,6 +120,59 @@ def global_hub_api(request):
 
 
 # ============================================================================
+# Smart Router - Dashboard Dispatcher
+# ============================================================================
+
+@login_required
+def dashboard_router(request):
+    """
+    Smart dispatcher that routes users to the appropriate dashboard.
+    - Admins/Superusers -> Admin Department Selector
+    - Employees with profile -> Their department dashboard
+    - No profile -> Friendly error page
+    """
+    # Check 1: Admin/Superuser
+    if request.user.is_superuser:
+        return redirect('dashboard:admin_dept_selector')
+    
+    # Check 2: Employee with profile and department
+    if hasattr(request.user, 'employeeprofile'):
+        employee_profile = request.user.employeeprofile
+        if employee_profile.department:
+            return redirect('dashboard:department', dept_code=employee_profile.department.code)
+        else:
+            return render(request, 'dashboard/no_access.html', {
+                'message': 'Your profile is not linked to a department.',
+                'message_cn': '您的档案未关联任何部门。',
+            })
+    
+    # Check 3: No profile - fallback error
+    return render(request, 'dashboard/no_access.html', {
+        'message': 'Account not linked to Department. Please contact IT.',
+        'message_cn': '账户未关联部门，请联系IT部门。',
+    })
+
+
+# ============================================================================
+# Admin Department Selector
+# ============================================================================
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser, login_url='index')
+def admin_dept_selector(request):
+    """
+    Admin-only view to select which department dashboard to view.
+    """
+    departments = Department.objects.all().order_by('name')
+    
+    context = {
+        'departments': departments,
+    }
+    
+    return render(request, 'dashboard/admin_dept_selector.html', context)
+
+
+# ============================================================================
 # Department Dashboard
 # ============================================================================
 
@@ -127,6 +181,8 @@ def department_dashboard(request, dept_code=None):
     """
     Department-specific dashboard showing RECEIVER_BOX and SENDER_BOX.
     If no dept_code provided, uses logged-in user's department.
+    
+    Security: Only superusers or employees of the department can access.
     """
     config = SystemConfig.get_config()
     
@@ -140,26 +196,25 @@ def department_dashboard(request, dept_code=None):
             })
     else:
         # Use user's department
-        try:
-            employee_profile = request.user.employeeprofile
-            department = employee_profile.department
-        except:
-            return render(request, 'dashboard/error.html', {
-                'message': 'You do not have an employee profile with a department.'
+        if hasattr(request.user, 'employeeprofile') and request.user.employeeprofile.department:
+            department = request.user.employeeprofile.department
+        else:
+            return render(request, 'dashboard/no_access.html', {
+                'message': 'You do not have an employee profile with a department.',
+                'message_cn': '您没有与部门关联的员工档案。',
             })
     
-    # Check access - only dept members can view their dept's dashboard
-    try:
-        user_dept = request.user.employeeprofile.department
-        if user_dept != department and not request.user.is_staff:
-            return render(request, 'dashboard/error.html', {
-                'message': 'You do not have permission to view this department\'s dashboard.'
-            })
-    except:
-        if not request.user.is_staff:
-            return render(request, 'dashboard/error.html', {
-                'message': 'You do not have an employee profile.'
-            })
+    # === SECURITY GUARD ===
+    # Allow if superuser (God Mode)
+    if request.user.is_superuser:
+        pass  # Access granted
+    # Allow if employee belongs to this department
+    elif hasattr(request.user, 'employeeprofile') and request.user.employeeprofile.department:
+        if request.user.employeeprofile.department.code != department.code:
+            raise PermissionDenied("You do not have permission to view this department's dashboard.")
+    # Block everyone else
+    else:
+        raise PermissionDenied("Access denied. You do not have an employee profile.")
     
     # Get RECEIVER_BOX queries for this department
     receiver_queries = QueryTicket.objects.filter(

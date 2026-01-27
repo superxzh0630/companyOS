@@ -7,6 +7,12 @@ from . import views
 app_name = 'dashboard'
 
 urlpatterns = [
+    # Smart Router - decides where to send user
+    path('router/', views.dashboard_router, name='router'),
+    
+    # Admin Department Selector
+    path('select-department/', views.admin_dept_selector, name='admin_dept_selector'),
+    
     # Global Hub Dashboard
     path('hub/', views.global_hub_dashboard, name='global_hub'),
     path('api/hub/', views.global_hub_api, name='global_hub_api'),
