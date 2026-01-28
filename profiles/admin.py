@@ -1,6 +1,90 @@
 from django.contrib import admin
 from django.contrib import messages
+from django.contrib.auth.models import User
+from django.contrib.auth.admin import UserAdmin
 from .models import EmployeeProfile, Department, Company
+
+
+# ============================================================================
+# Step 3: Custom User Admin with EmployeeProfile Inline
+# ============================================================================
+
+class EmployeeProfileInline(admin.StackedInline):
+    """
+    Inline editor for EmployeeProfile within User admin.
+    Allows Admin to set Department directly on the User page.
+    """
+    model = EmployeeProfile
+    can_delete = False
+    verbose_name_plural = 'Employee Profile & Department'
+    fk_name = 'user'
+    
+    fields = ('department', 'company', 'name', 'employee_id', 'email', 'age')
+    
+    def get_readonly_fields(self, request, obj=None):
+        """Make some fields readonly after creation."""
+        if obj:  # Editing existing user
+            return ('created_at', 'updated_at')
+        return ()
+
+
+# Unregister the default User admin
+admin.site.unregister(User)
+
+
+@admin.register(User)
+class CustomUserAdmin(UserAdmin):
+    """
+    Extended User admin with EmployeeProfile inline.
+    Shows Department dropdown inside the User edit page.
+    """
+    inlines = (EmployeeProfileInline,)
+    
+    # Preserve default list_display and add department info
+    list_display = ('username', 'email', 'first_name', 'last_name', 'get_department', 'is_staff', 'is_active')
+    list_filter = ('is_staff', 'is_superuser', 'is_active', 'groups')
+    search_fields = ('username', 'first_name', 'last_name', 'email', 'employeeprofile__department__display_name')
+    
+    def get_department(self, obj):
+        """Display user's department."""
+        if hasattr(obj, 'employeeprofile') and obj.employeeprofile.department:
+            return obj.employeeprofile.department.display_name
+        return '-'
+    get_department.short_description = 'Department'
+    get_department.admin_order_field = 'employeeprofile__department'
+
+
+# ============================================================================
+# Step 4: Department Members Inline for Department Admin
+# ============================================================================
+
+class DepartmentMembersInline(admin.TabularInline):
+    """
+    Read-only inline showing all members of a department.
+    Displayed on the Department edit page.
+    """
+    model = EmployeeProfile
+    fk_name = 'department'
+    fields = ('get_username', 'get_full_name_cn', 'email')
+    readonly_fields = ('get_username', 'get_full_name_cn', 'email')
+    extra = 0  # Do not show empty rows
+    can_delete = False
+    verbose_name = 'Department Member'
+    verbose_name_plural = 'Department Members'
+    
+    def get_username(self, obj):
+        """Display the linked username."""
+        return obj.user.username if obj.user else 'No User'
+    get_username.short_description = 'Username'
+    
+    def get_full_name_cn(self, obj):
+        """Display name in Chinese order (Last Name First)."""
+        return obj.full_name_cn()
+    get_full_name_cn.short_description = 'Name (姓名)'
+    
+    def has_add_permission(self, request, obj=None):
+        """Prevent adding members through this inline."""
+        return False
 
 
 @admin.register(Company)
@@ -55,11 +139,12 @@ class CompanyAdmin(admin.ModelAdmin):
 class DepartmentAdmin(admin.ModelAdmin):
     """Admin interface for Department management."""
     
-    list_display = ('code', 'display_name', 'company', 'created_at')
+    list_display = ('code', 'display_name', 'company', 'get_member_count', 'created_at')
     list_filter = ('company',)
     search_fields = ('display_name', 'code', 'description', 'company__name')
     readonly_fields = ('created_at',)
     ordering = ('company', 'display_name')
+    inlines = [DepartmentMembersInline]
     
     fieldsets = (
         ('Department Information', {
@@ -70,6 +155,11 @@ class DepartmentAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+    
+    def get_member_count(self, obj):
+        """Display count of department members."""
+        return obj.employees.count()
+    get_member_count.short_description = 'Members'
 
 
 @admin.register(EmployeeProfile)
