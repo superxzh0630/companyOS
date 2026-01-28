@@ -18,7 +18,7 @@ urlpatterns = [
     path('task/<int:ticket_id>/pick-up/', views.pick_up_task, name='pick_up_task'),
     path('task/<int:ticket_id>/complete/', views.complete_task, name='complete_task'),
     
-    # Dynamic ticket creation
-    path('create-ticket/<int:query_type_id>/', views.create_ticket_view, name='create_ticket'),
-    path('create-ticket/<int:query_type_id>/to/<str:dept_code>/', views.create_ticket_view, name='create_ticket_to_dept'),
+    # Query Type Selection & Dynamic Ticket Creation
+    path('create/', views.select_query_type, name='select_query_type'),
+    path('create/<int:query_type_id>/', views.create_ticket_view, name='create_ticket'),
 ]

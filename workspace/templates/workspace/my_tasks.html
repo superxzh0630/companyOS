@@ -14,8 +14,12 @@
         <header style="margin-bottom: 2rem;">
             <h1>我的工作区 / My Workspace</h1>
             <p>欢迎, {{ user.username }} | 部门: {{ user_dept.name }} ({{ user_dept.code }})</p>
-            <nav>
+            <nav style="display: flex; gap: 1rem; align-items: center; margin-top: 1rem;">
                 <a href="{% url 'index' %}">← 返回首页 / Back to Home</a>
+                <a href="{% url 'workspace:select_query_type' %}" 
+                   style="display: inline-block; padding: 0.5rem 1rem; background: #17a2b8; color: white; text-decoration: none; border-radius: 4px; font-weight: 600;">
+                    ➕ 创建新工单 / Create New Query
+                </a>
             </nav>
         </header>
 

@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% load static %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CompanyOS - Select Query Type</title>
+    <link rel="stylesheet" href="{% static 'css/base.css' %}">
+    <link rel="stylesheet" href="{% static 'css/forms.css' %}">
+    <link rel="stylesheet" href="{% static 'css/components.css' %}">
+    <style>
+        body {
+            background: #f5f5f5;
+            min-height: 100vh;
+            margin: 0;
+            padding: 2rem;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        .page-header {
+            background: linear-gradient(135deg, #003071 0%, #1a4a8a 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        
+        .page-header h1 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.75rem;
+        }
+        
+        .page-header p {
+            margin: 0;
+            opacity: 0.9;
+        }
+        
+        .nav-links {
+            margin-top: 1rem;
+        }
+        
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            margin: 0 0.5rem;
+        }
+        
+        .nav-links a:hover {
+            text-decoration: underline;
+        }
+        
+        .query-type-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+        
+        .query-type-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .query-type-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+        
+        .query-type-card a {
+            display: block;
+            text-decoration: none;
+            color: inherit;
+        }
+        
+        .card-header {
+            background: #17a2b8;
+            color: white;
+            padding: 1.25rem;
+        }
+        
+        .card-code {
+            font-size: 0.75rem;
+            background: rgba(255, 255, 255, 0.2);
+            display: inline-block;
+            padding: 0.125rem 0.5rem;
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+        }
+        
+        .card-name {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin: 0;
+        }
+        
+        .card-body {
+            padding: 1.25rem;
+        }
+        
+        .card-description {
+            color: #666;
+            font-size: 0.875rem;
+            margin: 0 0 1rem 0;
+            min-height: 2.5rem;
+        }
+        
+        .card-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+            color: #888;
+            margin-bottom: 1rem;
+        }
+        
+        .card-action {
+            color: #003071;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .empty-message {
+            text-align: center;
+            padding: 3rem;
+            color: #666;
+        }
+        
+        .empty-message .icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        
+        .dept-badge {
+            display: inline-block;
+            background: #e9ecef;
+            padding: 0.125rem 0.5rem;
+            border-radius: 4px;
+            margin: 0.125rem;
+            font-size: 0.7rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="page-header">
+            <h1>📝 新建工单 / Create New Query</h1>
+            <p>选择工单类型开始创建 / Select a query type to begin</p>
+            
+            <div class="nav-links">
+                <a href="{% url 'index' %}">← 首页 / Home</a> |
+                <a href="{% url 'workspace:my_tasks' %}">📋 我的任务 / My Tasks</a>
+            </div>
+        </div>
+        
+        {% if query_types %}
+        <div class="query-type-grid">
+            {% for qt in query_types %}
+            <div class="query-type-card">
+                <a href="{% url 'workspace:create_ticket' query_type_id=qt.id %}">
+                    <div class="card-header">
+                        <div class="card-code">{{ qt.code }}</div>
+                        <h3 class="card-name">{{ qt.name }}</h3>
+                    </div>
+                    <div class="card-body">
+                        <p class="card-description">
+                            {% if qt.description %}
+                                {{ qt.description|truncatewords:20 }}
+                            {% else %}
+                                点击创建此类型的工单 / Click to create this type of query
+                            {% endif %}
+                        </p>
+                        
+                        <div class="card-meta">
+                            <span>📋 {{ qt.fields.count }} 字段 / fields</span>
+                            <span>🏢 {{ qt.allowed_departments.count }} 部门可接收</span>
+                        </div>
+                        
+                        <div style="margin-bottom: 1rem;">
+                            {% for dept in qt.allowed_departments.all|slice:":3" %}
+                                <span class="dept-badge">{{ dept.code }}</span>
+                            {% endfor %}
+                            {% if qt.allowed_departments.count > 3 %}
+                                <span class="dept-badge">+{{ qt.allowed_departments.count|add:"-3" }}</span>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="card-action">
+                            选择此类型 / Select →
+                        </div>
+                    </div>
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-message">
+            <div class="icon">📭</div>
+            <h2>暂无可用工单类型 / No Query Types Available</h2>
+            <p>管理员尚未配置任何工单类型。请联系管理员。</p>
+            <p>No query types have been configured yet. Please contact an administrator.</p>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

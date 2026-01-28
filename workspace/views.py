@@ -292,14 +292,45 @@ def user_workspace(request, username):
 
 
 # ============================================================================
-# Dynamic Ticket Creation
+# Query Type Selection & Dynamic Ticket Creation
 # ============================================================================
+
+@login_required
+@login_required
+def select_query_type(request):
+    """
+    View A: Display available query types for the user to select.
+    Shows a grid of cards with all active query types.
+    """
+    # Get user's employee profile
+    try:
+        employee_profile = request.user.employeeprofile
+        user_dept = employee_profile.department
+    except:
+        messages.error(
+            request,
+            "你没有员工档案。请联系管理员。/ You don't have an employee profile. Please contact admin."
+        )
+        return redirect('index')
+    
+    # Fetch all active query types
+    query_types = QueryType.objects.filter(is_active=True).prefetch_related(
+        'allowed_departments', 'fields'
+    ).order_by('name')
+    
+    context = {
+        'query_types': query_types,
+        'user_dept': user_dept,
+    }
+    
+    return render(request, 'workspace/query_select.html', context)
+
 
 @login_required
 @transaction.atomic
 def create_ticket_view(request, query_type_id, dept_code=None):
     """
-    Create a new ticket using dynamic form based on QueryType definition.
+    View B: Create a new ticket using dynamic form based on QueryType definition.
     Handles both regular fields (stored in content_data JSON) and 
     file fields (stored as TicketAttachment objects).
     """
@@ -317,21 +348,13 @@ def create_ticket_view(request, query_type_id, dept_code=None):
         )
         return redirect('index')
     
-    # Determine target department
-    if dept_code:
-        target_dept = get_object_or_404(Department, code=dept_code)
-    else:
-        # Let user choose from allowed departments
-        target_dept = None
-    
-    # Validate that target department can receive this query type
-    if target_dept and not query_type.allowed_departments.filter(id=target_dept.id).exists():
+    # Check if user has a department
+    if not user_dept:
         messages.error(
             request,
-            f"部门 {target_dept.name} 不接受 {query_type.name} 类型的工单。/ "
-            f"Department {target_dept.name} does not accept {query_type.name} queries."
+            "你的账户未关联部门。请联系管理员。/ Your account is not linked to a department. Please contact admin."
         )
-        return redirect('workspace:my_tasks')
+        return redirect('index')
     
     # Get allowed departments for this query type
     allowed_depts = query_type.allowed_departments.all()
@@ -343,34 +366,43 @@ def create_ticket_view(request, query_type_id, dept_code=None):
             query_type=query_type
         )
         
-        # Get target department from form if not in URL
-        post_target_dept_code = request.POST.get('target_department')
-        if not target_dept and post_target_dept_code:
-            target_dept = get_object_or_404(Department, code=post_target_dept_code)
-        
-        if not target_dept:
-            messages.error(request, "请选择目标部门。/ Please select a target department.")
-        elif form.is_valid():
-            # Generate t_tag
+        if form.is_valid():
+            # Extract target department from form (routing)
+            target_dept = form.cleaned_data['target_department']
+            
+            # Generate t_tag using query type code and target department code
             t_tag = generate_t_tag(query_type.code, target_dept.code)
             
-            # Separate file fields from regular fields
+            # Separate file fields from regular fields (Data Separation)
             content_data = {}
             file_fields = {}
             
-            for field_def in query_type.fields.all():
-                field_key = field_def.field_key
-                value = form.cleaned_data.get(field_key)
+            # Get field definitions for lookup
+            field_definitions = {fd.field_key: fd for fd in query_type.fields.all()}
+            
+            for field_key, value in form.cleaned_data.items():
+                # Skip the routing field and standard fields
+                if field_key in ('target_department', 'title', 'description'):
+                    continue
                 
+                # Get the field definition
+                field_def = field_definitions.get(field_key)
+                if not field_def:
+                    continue
+                
+                # Check if this is a FILE type field
                 if field_def.field_type == QueryFieldDefinition.FieldType.FILE:
                     if value:  # File was uploaded
                         file_fields[field_key] = (value, field_def)
                 else:
-                    # Convert non-serializable types
-                    if hasattr(value, 'isoformat'):  # Date/datetime
-                        content_data[field_key] = value.isoformat()
-                    elif value is not None:
-                        content_data[field_key] = value
+                    # Convert non-serializable types for JSON
+                    if value is not None:
+                        if hasattr(value, 'isoformat'):  # Date/datetime
+                            content_data[field_key] = value.isoformat()
+                        elif hasattr(value, '__float__'):  # Decimal
+                            content_data[field_key] = float(value)
+                        else:
+                            content_data[field_key] = value
             
             # Create the ticket
             ticket = QueryTicket.objects.create(
@@ -386,7 +418,7 @@ def create_ticket_view(request, query_type_id, dept_code=None):
                 current_owner=request.user
             )
             
-            # Create file attachments
+            # Create file attachments for each FILE field
             for field_key, (file_obj, field_def) in file_fields.items():
                 TicketAttachment.objects.create(
                     ticket=ticket,
@@ -396,7 +428,7 @@ def create_ticket_view(request, query_type_id, dept_code=None):
             
             messages.success(
                 request,
-                f"工单 {t_tag} 创建成功！/ Ticket {t_tag} created successfully!"
+                f"工单 {t_tag} 创建成功！已放入发送箱。/ Ticket {t_tag} created successfully! Placed in sender box."
             )
             return redirect('workspace:my_tasks')
     else:
@@ -405,9 +437,8 @@ def create_ticket_view(request, query_type_id, dept_code=None):
     context = {
         'query_type': query_type,
         'form': form,
-        'target_dept': target_dept,
         'allowed_depts': allowed_depts,
         'user_dept': user_dept,
     }
     
-    return render(request, 'workspace/create_ticket.html', context)
+    return render(request, 'workspace/query_create.html', context)

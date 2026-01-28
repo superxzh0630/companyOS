@@ -118,31 +118,12 @@ class CompleteTaskForm(forms.Form):
 class DynamicTicketForm(forms.Form):
     """
     Dynamic form that builds fields based on QueryType field definitions.
+    Includes target_department field restricted to allowed departments.
     
     Usage:
         form = DynamicTicketForm(query_type=my_query_type)
         form = DynamicTicketForm(data=request.POST, files=request.FILES, query_type=my_query_type)
     """
-    
-    # Standard fields always present
-    title = forms.CharField(
-        label='标题 / Title',
-        max_length=200,
-        widget=forms.TextInput(attrs={
-            'class': 'form-control',
-            'placeholder': 'Enter ticket title...'
-        })
-    )
-    
-    description = forms.CharField(
-        label='描述 / Description',
-        required=False,
-        widget=forms.Textarea(attrs={
-            'class': 'form-control',
-            'rows': 3,
-            'placeholder': 'Enter general description (optional)...'
-        })
-    )
     
     def __init__(self, *args, **kwargs):
         """
@@ -155,7 +136,43 @@ class DynamicTicketForm(forms.Form):
         super().__init__(*args, **kwargs)
         
         if self.query_type:
+            self._build_target_department_field()
+            self._build_standard_fields()
             self._build_dynamic_fields()
+    
+    def _build_target_department_field(self):
+        """Add target department field restricted to allowed departments."""
+        self.fields['target_department'] = forms.ModelChoiceField(
+            queryset=self.query_type.allowed_departments.all(),
+            required=True,
+            label='目标部门 / Target Department',
+            empty_label='-- 选择部门 / Select Department --',
+            widget=forms.Select(attrs={
+                'class': 'form-select form-control'
+            }),
+            help_text='Only departments authorized to receive this query type are shown.'
+        )
+    
+    def _build_standard_fields(self):
+        """Add standard fields (title, description)."""
+        self.fields['title'] = forms.CharField(
+            label='标题 / Title',
+            max_length=200,
+            widget=forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Enter ticket title...'
+            })
+        )
+        
+        self.fields['description'] = forms.CharField(
+            label='描述 / Description',
+            required=False,
+            widget=forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Enter general description (optional)...'
+            })
+        )
     
     def _build_dynamic_fields(self):
         """Build form fields dynamically based on QueryType field definitions."""
