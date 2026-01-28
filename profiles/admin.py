@@ -3,6 +3,7 @@ from django.contrib import messages
 from django.contrib.auth.models import User
 from django.contrib.auth.admin import UserAdmin
 from .models import EmployeeProfile, Department, Company
+from workflows.models import SenderTicket, ReceiverTicket, QueryTicket
 
 
 # ============================================================================
@@ -87,6 +88,66 @@ class DepartmentMembersInline(admin.TabularInline):
         return False
 
 
+# ============================================================================
+# Department Box Inlines (Sender Box & Receiver Box)
+# ============================================================================
+
+class SenderBoxInline(admin.TabularInline):
+    """
+    Inline showing tickets in Sender Box for this department.
+    Displays outgoing tickets waiting to be pushed to Hub.
+    """
+    model = SenderTicket
+    fk_name = 'source_dept'  # Links to the Dept acting as Sender
+    fields = ('t_tag', 'query_type', 'target_dept', 'created_at', 'status')
+    readonly_fields = ('t_tag', 'query_type', 'target_dept', 'created_at', 'status')
+    extra = 0
+    max_num = 0
+    can_delete = False
+    verbose_name = "Outgoing Ticket"
+    verbose_name_plural = "📤 Sender Box (Waiting for Hub)"
+    
+    def get_queryset(self, request):
+        """Filter to only show tickets in SENDER_BOX."""
+        return super().get_queryset(request).filter(
+            location=QueryTicket.Location.SENDER_BOX
+        ).order_by('-created_at')
+    
+    def has_add_permission(self, request, obj=None):
+        return False
+    
+    def has_change_permission(self, request, obj=None):
+        return False
+
+
+class ReceiverBoxInline(admin.TabularInline):
+    """
+    Inline showing tickets in Receiver Box for this department.
+    Displays incoming tickets ready to be assigned.
+    """
+    model = ReceiverTicket
+    fk_name = 'target_dept'  # Links to the Dept acting as Receiver
+    fields = ('t_tag', 'query_type', 'source_dept', 'grabbed_at', 'status')
+    readonly_fields = ('t_tag', 'query_type', 'source_dept', 'grabbed_at', 'status')
+    extra = 0
+    max_num = 0
+    can_delete = False
+    verbose_name = "Incoming Ticket"
+    verbose_name_plural = "📥 Receiver Box (Ready to Assign)"
+    
+    def get_queryset(self, request):
+        """Filter to only show tickets in RECEIVER_BOX."""
+        return super().get_queryset(request).filter(
+            location=QueryTicket.Location.RECEIVER_BOX
+        ).order_by('-grabbed_at')
+    
+    def has_add_permission(self, request, obj=None):
+        return False
+    
+    def has_change_permission(self, request, obj=None):
+        return False
+
+
 @admin.register(Company)
 class CompanyAdmin(admin.ModelAdmin):
     """Admin interface for Company management."""
@@ -144,7 +205,7 @@ class DepartmentAdmin(admin.ModelAdmin):
     search_fields = ('display_name', 'code', 'description', 'company__name')
     readonly_fields = ('created_at',)
     ordering = ('company', 'display_name')
-    inlines = [DepartmentMembersInline]
+    inlines = [DepartmentMembersInline, SenderBoxInline, ReceiverBoxInline]
     
     fieldsets = (
         ('Department Information', {

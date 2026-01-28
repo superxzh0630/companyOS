@@ -167,3 +167,129 @@ def complete_query(query_ticket):
     query_ticket.save(update_fields=['status', 'completed_at'])
     
     return query_ticket
+
+
+# ============================================================================
+# Logistics Engine Functions (15-Second Background Cycles)
+# ============================================================================
+
+@transaction.atomic
+def run_sender_cycle():
+    """
+    Push tickets from SENDER_BOX to BIG_HUB while respecting capacity.
+    
+    Logic:
+    1. Get hub_limit from SystemConfig
+    2. Count current BIG_HUB items
+    3. If current < limit: Move oldest SENDER_BOX tickets to BIG_HUB
+    
+    Returns:
+        dict: Summary of moved tickets
+    """
+    config = SystemConfig.get_config()
+    hub_limit = config.hub_capacity_limit
+    
+    # Count current items in BIG_HUB
+    hub_count = QueryTicket.objects.filter(
+        location=QueryTicket.Location.BIG_HUB
+    ).count()
+    
+    # Calculate available capacity
+    available_capacity = hub_limit - hub_count
+    
+    if available_capacity <= 0:
+        return {
+            'moved': 0,
+            'hub_count': hub_count,
+            'hub_limit': hub_limit,
+            'message': 'Hub is at capacity'
+        }
+    
+    # Get oldest tickets in SENDER_BOX (up to available capacity)
+    sender_tickets = QueryTicket.objects.select_for_update().filter(
+        location=QueryTicket.Location.SENDER_BOX,
+        status=QueryTicket.Status.PENDING
+    ).order_by('created_at')[:available_capacity]
+    
+    moved_count = 0
+    for ticket in sender_tickets:
+        ticket.location = QueryTicket.Location.BIG_HUB
+        ticket.status = QueryTicket.Status.PENDING
+        ticket.save(update_fields=['location', 'status'])
+        moved_count += 1
+    
+    return {
+        'moved': moved_count,
+        'hub_count': hub_count + moved_count,
+        'hub_limit': hub_limit,
+        'message': f'Moved {moved_count} ticket(s) to Hub'
+    }
+
+
+@transaction.atomic
+def run_grabber_cycle():
+    """
+    Move tickets from BIG_HUB to RECEIVER_BOX for each department.
+    
+    Logic:
+    1. Get dept_limit from SystemConfig
+    2. Loop through all departments
+    3. For each dept: Move oldest BIG_HUB tickets to RECEIVER_BOX if space
+    
+    Returns:
+        dict: Summary of moved tickets per department
+    """
+    config = SystemConfig.get_config()
+    dept_limit = config.dept_receiving_box_limit
+    
+    # Get all departments
+    departments = Department.objects.all()
+    
+    results = {}
+    total_moved = 0
+    
+    for dept in departments:
+        # Count current items in department's RECEIVER_BOX
+        receiver_count = QueryTicket.objects.filter(
+            target_dept=dept,
+            location=QueryTicket.Location.RECEIVER_BOX
+        ).count()
+        
+        # Calculate available capacity
+        available_capacity = dept_limit - receiver_count
+        
+        if available_capacity <= 0:
+            results[dept.code] = {
+                'moved': 0,
+                'receiver_count': receiver_count,
+                'message': 'Receiver box is full'
+            }
+            continue
+        
+        # Find oldest BIG_HUB tickets targeted for this department
+        hub_tickets = QueryTicket.objects.select_for_update().filter(
+            target_dept=dept,
+            location=QueryTicket.Location.BIG_HUB,
+            status=QueryTicket.Status.PENDING
+        ).order_by('created_at')[:available_capacity]
+        
+        moved_count = 0
+        for ticket in hub_tickets:
+            ticket.location = QueryTicket.Location.RECEIVER_BOX
+            ticket.status = QueryTicket.Status.RECEIVED
+            ticket.grabbed_at = timezone.now()
+            ticket.save(update_fields=['location', 'status', 'grabbed_at'])
+            moved_count += 1
+        
+        results[dept.code] = {
+            'moved': moved_count,
+            'receiver_count': receiver_count + moved_count,
+            'message': f'Moved {moved_count} ticket(s)' if moved_count > 0 else 'No pending tickets'
+        }
+        total_moved += moved_count
+    
+    return {
+        'total_moved': total_moved,
+        'dept_limit': dept_limit,
+        'department_results': results
+    }

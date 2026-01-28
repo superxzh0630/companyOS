@@ -120,7 +120,7 @@ class QueryTicketAdmin(admin.ModelAdmin):
         'title',
         'query_type',
         'status',
-        'location',
+        'get_detailed_location',
         'source_dept',
         'target_dept',
         'current_owner',
@@ -153,6 +153,21 @@ class QueryTicketAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+    
+    def get_detailed_location(self, obj):
+        """Display location with department context."""
+        if obj.location == QueryTicket.Location.SENDER_BOX:
+            dept_code = obj.source_dept.code if obj.source_dept else 'N/A'
+            return f"📤 Sender Box [{dept_code}]"
+        elif obj.location == QueryTicket.Location.RECEIVER_BOX:
+            dept_code = obj.target_dept.code if obj.target_dept else 'N/A'
+            return f"📥 Receiver Box [{dept_code}]"
+        elif obj.location == QueryTicket.Location.BIG_HUB:
+            return "☁️ Global Hub"
+        else:
+            return obj.get_location_display()
+    get_detailed_location.short_description = 'Location'
+    get_detailed_location.admin_order_field = 'location'
     
     def has_add_permission(self, request):
         """Prevent manual ticket creation through admin."""

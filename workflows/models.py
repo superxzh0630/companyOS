@@ -460,3 +460,29 @@ class TicketAttachment(models.Model):
     def __str__(self):
         field_label = self.field_definition.label if self.field_definition else "General"
         return f"{self.ticket.t_tag} - {field_label} - {self.original_filename}"
+
+
+# ============================================================================
+# Proxy Models for Department-Specific Box Visualization
+# ============================================================================
+
+class SenderTicket(QueryTicket):
+    """
+    Proxy model for visualizing tickets in Sender Box.
+    Used in Department admin to show outgoing tickets waiting for Hub.
+    """
+    class Meta:
+        proxy = True
+        verbose_name = "Item in Sender Box"
+        verbose_name_plural = "📤 Sender Box (Waiting for Hub)"
+
+
+class ReceiverTicket(QueryTicket):
+    """
+    Proxy model for visualizing tickets in Receiver Box.
+    Used in Department admin to show incoming tickets ready for assignment.
+    """
+    class Meta:
+        proxy = True
+        verbose_name = "Item in Receiver Box"
+        verbose_name_plural = "📥 Receiver Box (Ready to Assign)"
