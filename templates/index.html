@@ -8,10 +8,46 @@
     <link rel="stylesheet" href="{% static 'css/base.css' %}">
     <link rel="stylesheet" href="{% static 'css/forms.css' %}">
     <link rel="stylesheet" href="{% static 'css/components.css' %}">
+    <style>
+        body {
+            display: block;
+            padding: 2rem;
+        }
+        .container {
+            max-width: 100%;
+            width: 100%;
+        }
+        .quick-links-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1rem;
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .quick-links-grid li {
+            margin: 0;
+        }
+        .quick-links-grid a {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.25rem 1.5rem;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+            transition: transform 0.2s, box-shadow 0.2s;
+            height: 100%;
+        }
+        .quick-links-grid a:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+        }
+    </style>
 </head>
 <body>
     <div class="container">
-        <h1>CompanyOS - 企业运营系统</h1>
+        <h1 style="text-align: left;">CompanyOS - 企业运营系统</h1>
         <p>Welcome, <strong>{{ request.user.username }}</strong>! 
             {% if request.user.is_superuser %}
                 <span style="color: #BA0C2F; font-weight: bold;">👑 Administrator</span>
@@ -28,29 +64,29 @@
         
         <nav style="margin-top: 2rem;">
             <h2>快速导航 / Quick Links</h2>
-            <ul style="list-style: none; padding: 0;">
-                <li style="margin-bottom: 1rem;">
-                    <a href="{% url 'workspace:my_tasks' %}" style="display: inline-block; padding: 1rem 2rem; background-color: #003071; color: white; text-decoration: none; border-radius: 4px; font-weight: bold;">
+            <ul class="quick-links-grid">
+                <li>
+                    <a href="{% url 'workspace:my_tasks' %}" style="background-color: #003071; color: white;">
                         📋 我的工作区 / My Workspace
                     </a>
                 </li>
-                <li style="margin-bottom: 1rem;">
-                    <a href="{% url 'dashboard:global_hub' %}" style="display: inline-block; padding: 1rem 2rem; background-color: #28a745; color: white; text-decoration: none; border-radius: 4px; font-weight: bold;">
+                <li>
+                    <a href="{% url 'dashboard:global_hub' %}" style="background-color: #28a745; color: white;">
                         🌐 大枢纽仪表板 / Global Hub Dashboard
                     </a>
                 </li>
-                <li style="margin-bottom: 1rem;">
-                    <a href="{% url 'dashboard:router' %}" style="display: inline-block; padding: 1rem 2rem; background-color: #17a2b8; color: white; text-decoration: none; border-radius: 4px; font-weight: bold;">
+                <li>
+                    <a href="{% url 'dashboard:router' %}" style="background-color: #17a2b8; color: white;">
                         🏢 部门仪表板 / My Department Dashboard
                     </a>
                 </li>
-                <li style="margin-bottom: 1rem;">
-                    <a href="{% url 'dashboard:admin_monitor' %}" style="display: inline-block; padding: 1rem 2rem; background-color: #6f42c1; color: white; text-decoration: none; border-radius: 4px; font-weight: bold;">
+                <li>
+                    <a href="{% url 'dashboard:admin_monitor' %}" style="background-color: #6f42c1; color: white;">
                         🖥️ 管理员监控 / Admin Monitor
                     </a>
                 </li>
-                <li style="margin-bottom: 1rem;">
-                    <a href="/admin/" style="display: inline-block; padding: 1rem 2rem; background-color: #BA0C2F; color: white; text-decoration: none; border-radius: 4px; font-weight: bold;">
+                <li>
+                    <a href="/admin/" style="background-color: #BA0C2F; color: white;">
                         ⚙️ 管理后台 / Django Admin
                     </a>
                 </li>

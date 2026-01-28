@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="{% static 'css/forms.css' %}">
 </head>
 <body>
-    <div class="container">
+    <div class="container" style="max-width: 100%; width: 100%; padding: 2rem;">
         <header style="margin-bottom: 2rem;">
             <h1>我的工作区 / My Workspace</h1>
             <p>欢迎, {{ user.username }} | 部门: {{ user_dept.name }} ({{ user_dept.code }})</p>
