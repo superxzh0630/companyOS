@@ -85,8 +85,15 @@ class QueryType(models.Model):
     allowed_departments = models.ManyToManyField(
         Department,
         related_name='accepted_query_types',
-        verbose_name="Allowed Departments",
+        verbose_name="Target Departments (Receivers) / 目标部门",
         help_text="Departments that can receive this type of query"
+    )
+    creating_departments = models.ManyToManyField(
+        Department,
+        related_name='creatable_query_types',
+        blank=True,
+        verbose_name="Source Departments (Creators) / 谁可以发起",
+        help_text="Only users from these departments can initiate this query type."
     )
     description = models.TextField(
         blank=True,

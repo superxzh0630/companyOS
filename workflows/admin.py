@@ -60,11 +60,11 @@ class QueryTypeAdmin(admin.ModelAdmin):
     Admin interface for configuring Query Types.
     Features inline field editing and easy department selection.
     """
-    list_display = ('name', 'code', 'is_active', 'get_departments', 'get_field_count', 'updated_at')
-    list_filter = ('is_active', 'allowed_departments', 'created_at')
+    list_display = ('name', 'code', 'is_active', 'get_source_depts', 'get_target_depts', 'get_field_count', 'updated_at')
+    list_filter = ('is_active', 'allowed_departments', 'creating_departments', 'created_at')
     search_fields = ('name', 'code', 'description')
     readonly_fields = ('created_at', 'updated_at')
-    filter_horizontal = ('allowed_departments',)
+    filter_horizontal = ('allowed_departments', 'creating_departments')
     inlines = [QueryFieldDefinitionInline]
     prepopulated_fields = {'code': ('name',)}
     ordering = ('name',)
@@ -73,9 +73,15 @@ class QueryTypeAdmin(admin.ModelAdmin):
         ('Basic Information', {
             'fields': ('name', 'code', 'description', 'is_active')
         }),
-        ('Department Configuration', {
+        ('📤 Outbound Rules (Who Can Create?)', {
+            'fields': ('creating_departments',),
+            'description': 'Select which departments can INITIATE/CREATE this type of query.',
+            'classes': ('wide',)
+        }),
+        ('📥 Inbound Rules (Who Can Receive?)', {
             'fields': ('allowed_departments',),
-            'description': 'Select which departments can receive this type of query.'
+            'description': 'Select which departments can RECEIVE this type of query.',
+            'classes': ('wide',)
         }),
         ('Timestamps', {
             'fields': ('created_at', 'updated_at'),
@@ -83,14 +89,23 @@ class QueryTypeAdmin(admin.ModelAdmin):
         }),
     )
     
-    def get_departments(self, obj):
+    def get_source_depts(self, obj):
+        """Display list of creating departments."""
+        depts = obj.creating_departments.all()[:3]
+        dept_codes = [d.code for d in depts]
+        if obj.creating_departments.count() > 3:
+            dept_codes.append(f"+{obj.creating_departments.count() - 3} more")
+        return ", ".join(dept_codes) if dept_codes else "—"
+    get_source_depts.short_description = "📤 Sources"
+    
+    def get_target_depts(self, obj):
         """Display list of allowed departments."""
         depts = obj.allowed_departments.all()[:3]
         dept_codes = [d.code for d in depts]
         if obj.allowed_departments.count() > 3:
             dept_codes.append(f"+{obj.allowed_departments.count() - 3} more")
-        return ", ".join(dept_codes) if dept_codes else "-"
-    get_departments.short_description = "Allowed Depts"
+        return ", ".join(dept_codes) if dept_codes else "—"
+    get_target_depts.short_description = "📥 Targets"
     
     def get_field_count(self, obj):
         """Display count of defined fields."""

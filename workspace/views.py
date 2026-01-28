@@ -228,23 +228,25 @@ def complete_task(request, ticket_id):
             
             # Create child query if requested
             if form.cleaned_data['create_child_query']:
-                child_query_type = form.cleaned_data['child_query_type']
+                next_query_type = form.cleaned_data['next_query_type']
                 child_target_dept = form.cleaned_data['child_target_dept']
                 child_title = form.cleaned_data['child_title']
                 child_content = form.cleaned_data['child_content']
                 
-                # Generate t_tag for child query
-                child_t_tag = generate_t_tag(child_query_type, child_target_dept.code)
+                # Generate t_tag for child query using QueryType code
+                child_t_tag = generate_t_tag(next_query_type.code, child_target_dept.code)
                 
                 # Create child query
                 child_ticket = QueryTicket.objects.create(
                     t_tag=child_t_tag,
                     title=child_title,
-                    content=f"父任务: {ticket.t_tag}\n\n{child_content}",
+                    content=f"父任务 / Parent: {ticket.t_tag}\n\n{child_content}",
+                    query_type=next_query_type,
                     status=QueryTicket.Status.PENDING,
                     location=QueryTicket.Location.SENDER_BOX,
                     source_dept=user_dept,
-                    target_dept=child_target_dept
+                    target_dept=child_target_dept,
+                    current_owner=request.user
                 )
                 
                 messages.success(
@@ -344,11 +346,10 @@ def user_workspace(request, username):
 # ============================================================================
 
 @login_required
-@login_required
 def select_query_type(request):
     """
     View A: Display available query types for the user to select.
-    Shows a grid of cards with all active query types.
+    Shows a grid of cards with query types the user's department can CREATE.
     """
     # Get user's employee profile
     try:
@@ -361,8 +362,11 @@ def select_query_type(request):
         )
         return redirect('index')
     
-    # Fetch all active query types
-    query_types = QueryType.objects.filter(is_active=True).prefetch_related(
+    # Fetch only query types the user's department is authorized to CREATE
+    query_types = QueryType.objects.filter(
+        is_active=True,
+        creating_departments=user_dept  # <-- Source-side permission check
+    ).prefetch_related(
         'allowed_departments', 'fields'
     ).order_by('name')
     
