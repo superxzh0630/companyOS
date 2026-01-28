@@ -100,7 +100,8 @@ def pick_up_task(request, ticket_id):
 @login_required
 def task_detail(request, ticket_id):
     """
-    Display detailed view of a task with attachments.
+    Display detailed view of a task with dynamic grid-based dashboard layout.
+    Prepares structured display_data for the template grid.
     """
     ticket = get_object_or_404(QueryTicket, id=ticket_id)
     
@@ -123,6 +124,51 @@ def task_detail(request, ticket_id):
         messages.error(request, "你无权查看此任务。/ You don't have permission to view this task.")
         return redirect('workspace:my_tasks')
     
+    # ========================================================================
+    # Step 1: Prepare Display Data for Dynamic Grid
+    # ========================================================================
+    display_data = []
+    
+    # Fetch field definitions if query_type exists
+    if ticket.query_type:
+        field_defs = ticket.query_type.fields.all().order_by('order', 'id')
+        
+        for field_def in field_defs:
+            # Skip FILE fields - handled separately as attachments
+            if field_def.field_type == QueryFieldDefinition.FieldType.FILE:
+                continue
+            
+            # Extract value from content_data JSON
+            value = ticket.content_data.get(field_def.field_key) if ticket.content_data else None
+            
+            # Format value based on type
+            display_value = value
+            if value is not None:
+                if field_def.field_type == QueryFieldDefinition.FieldType.BOOLEAN:
+                    display_value = '✓ Yes / 是' if value else '✗ No / 否'
+                elif field_def.field_type == QueryFieldDefinition.FieldType.DATE:
+                    # Value might be ISO string from JSON
+                    display_value = value
+            
+            # Determine layout logic (Smart Grid)
+            # TEXTAREA gets full width, others get half width
+            if field_def.field_type == QueryFieldDefinition.FieldType.TEXTAREA:
+                col_size = 'col-12'
+            else:
+                col_size = 'col-md-6'
+            
+            display_data.append({
+                'label': field_def.label,
+                'value': display_value,
+                'col_size': col_size,
+                'type': field_def.field_type,
+                'field_key': field_def.field_key,
+            })
+    
+    # Fetch attachments (both legacy and dynamic)
+    legacy_attachments = ticket.attachments.all()
+    dynamic_attachments = ticket.dynamic_attachments.all()
+    
     # Handle attachment upload
     if request.method == 'POST' and 'upload_file' in request.POST:
         attachment_form = AttachmentUploadForm(request.POST, request.FILES)
@@ -138,7 +184,9 @@ def task_detail(request, ticket_id):
     
     context = {
         'ticket': ticket,
-        'attachments': ticket.attachments.all(),
+        'display_data': display_data,
+        'legacy_attachments': legacy_attachments,
+        'dynamic_attachments': dynamic_attachments,
         'attachment_form': attachment_form,
         'user_dept': user_dept,
     }
