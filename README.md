@@ -1,10 +1,10 @@
 # companyOS
 
-A Django-based enterprise workflow management system for inter-departmental query and task tracking. CompanyOS provides a structured flow system that moves query tickets between departments through a hub-and-spoke model, ensuring organized task management and efficient cross-departmental collaboration.
+A Django-based enterprise workflow management system for inter-departmental query and task tracking. companyOS provides a structured flow system that moves query tickets between departments through a hub-and-spoke model, ensuring organized task management and efficient cross-departmental collaboration.
 
 ## Overview
 
-CompanyOS is designed to streamline internal operations within organizations by providing a centralized platform for managing query tickets across multiple departments. It implements a workflow system where queries move through different stages (boxes) - from creation to completion - with built-in capacity limits and tracking mechanisms.
+companyOS is designed to streamline internal operations within organizations by providing a centralized platform for managing query tickets across multiple departments. It implements a workflow system where queries move through different stages (boxes) - from creation to completion - with built-in capacity limits and tracking mechanisms.
 
 ### Key Features
 
